@@ -57,21 +57,21 @@ void hal_pin_rst (u1_t val) {
 
 static bool dio_states[NUM_DIO] = {0};
 
-// static void hal_io_check() {
-//     uint8_t i;
-//     for (i = 0; i < NUM_DIO; ++i) {
-//         if (lmic_pins.dio[i] == LMIC_UNUSED_PIN)
-//             continue;
-//
-//         if (dio_states[i] != digitalRead(lmic_pins.dio[i])) {
-//             dio_states[i] = !dio_states[i];
-//             if (dio_states[i])
-//                 radio_irq_handler(i);
-//         }
-//     }
-// }
+static void hal_io_check() {
+    uint8_t i;
+    for (i = 0; i < NUM_DIO; ++i) {
+        if (lmic_pins.dio[i] == LMIC_UNUSED_PIN)
+            continue;
 
-static void hal_io_check() { radio_irq_handler(0); }
+        if (dio_states[i] != digitalRead(lmic_pins.dio[i])) {
+            dio_states[i] = !dio_states[i];
+            if (dio_states[i])
+                radio_irq_handler(i);
+        }
+    }
+}
+
+// static void hal_io_check() { radio_irq_handler(0); }
 
 // -----------------------------------------------------------------------------
 // SPI

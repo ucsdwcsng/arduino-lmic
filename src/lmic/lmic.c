@@ -2288,3 +2288,12 @@ void LMIC_setLinkCheckMode (bit_t enabled) {
     LMIC.adrChanged = 0;
     LMIC.adrAckReq = enabled ? LINK_CHECK_INIT : LINK_CHECK_OFF;
 }
+
+// Get and set functions for seqnoUp
+void LMIC_setSeqnoUp (u4_t seqnoUp) {
+    LMIC.seqnoUp = seqnoUp;
+};
+
+u4_t LMIC_getSeqnoUp (void) {
+    return LMIC.seqnoUp;
+};

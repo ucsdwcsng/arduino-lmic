@@ -77,6 +77,7 @@ static void hal_io_check() {
     }
 }
 
+<<<<<<< HEAD
 #else
 // Interrupt handlers
 static bool interrupt_flags[NUM_DIO] = {0};
@@ -116,6 +117,9 @@ static void hal_io_check() {
     }
 }
 #endif // LMIC_USE_INTERRUPTS
+=======
+// static void hal_io_check() { radio_irq_handler(0); }
+>>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
 
 // -----------------------------------------------------------------------------
 // SPI

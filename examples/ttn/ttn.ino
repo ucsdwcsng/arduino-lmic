@@ -22,7 +22,8 @@
  *******************************************************************************/
 
  // References:
- // [feather] adafruit-feather-m0-radio-with-lora-module.pdf
+ // [feather] file: adafruit-feather-m0-radio-with-lora-module.pdf
+ //            link: https://learn.adafruit.com/adafruit-feather-m0-radio-with-lora-radio-module?view=all
 
 //#if defined(ARDUINO_SAMD_ZERO) && defined(SERIAL_PORT_USBVIRTUAL)
 //  // Required for Serial on Zero based boards
@@ -33,19 +34,48 @@
 #include <hal/hal.h>
 #include <SPI.h>
 
-// LoRaWAN NwkSKey, network session key
-// This is the default Semtech key, which is used by the prototype TTN
-// network initially.
-static const PROGMEM u1_t NWKSKEY[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+// LoRaWAN end-device address (DevAddr)
+// See http://thethingsnetwork.org/wiki/AddressSpace
+static const u4_t DEVADDR = 0x00000000 ;  // <-- Change this address for every node!
+                                          // You must generate a 32-bit hexidecimal ID yourself
+                                          // TODO: update randeui64 to provide a random 32-bit device ID
+
+// TTNCTL responds to adding a new device with a generated NWKSKEY and APPSKEY
+// The NWKSKEY and APPSKEY must be converted and placed in NWKSKEY[16] and APPSKEY[16] below
+
+/* Here is a quick bash command to convert the TTNCTL generated NWKSKEY and APPSKEY
+
+  Cut and paste the following function into a bash shell.
+
+    function hexblob2c () { echo "$1" | awk '{ for (i=1; i < length($1); i += 2) { printf("0x%s, ", substr($1, i, 2)); } } END { printf("\n") }' ; }
+
+  In the same shell, do the following.  Register your device:
+    you@yourmachine: ~/where/ever/your/ttnctl/is$ ./ttnctl-darwin-amd64 devices register personalized 01234567
+      INFO Generating random NwkSKey and AppSKey...
+      INFO Registered personalized device           AppSKey=0123456789ABCDEF0123456789ABCDEF DevAddr=01234567 Flags=0 NwkSKey=FEDCBA9876543210FEDCBA9876543210
+
+  Next, use hexblob2c to make your initialization values:
+    you@yourmachine: ~$ hexblob2c 0123456789ABCDEF0123456789ABCDEF
+    0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+
+    you@yourmachine: ~$ hexblob2c FEDCBA9876543210FEDCBA9876543210
+    0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
+
+  Finally, paste the above strings into the APPSKEY and NWKSKEY initializers below
+
+*/
 
 // LoRaWAN AppSKey, application session key
 // This is the default Semtech key, which is used by the prototype TTN
 // network initially.
-static const u1_t PROGMEM APPSKEY[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+static const u1_t PROGMEM APPSKEY[16] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, };
 
-// LoRaWAN end-device address (DevAddr)
-// See http://thethingsnetwork.org/wiki/AddressSpace
-static const u4_t DEVADDR = 0x958C84AF ; // <-- Change this address for every node!  //GENERATED
+// LoRaWAN NwkSKey, network session key
+// This is the default Semtech key, which is used by the prototype TTN
+// network initially.
+static const PROGMEM u1_t NWKSKEY[16] = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, };
+
+
 
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
@@ -54,7 +84,7 @@ void os_getArtEui (u1_t* buf) { }
 void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
 
-static uint8_t mydata[] = "Hello there friend!";
+static uint8_t mydata[] = "Hello world!";
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
@@ -67,13 +97,19 @@ const lmic_pinmap lmic_pins = {
     .nss = 8,                       // chip select on feather (rf95module) CS
     .rxtx = LMIC_UNUSED_PIN,
     .rst = 4,                       // reset pin
-    .dio = {6, 5, LMIC_UNUSED_PIN}, // assumes external jumpers [feather_lora_jumper]
-                                    // DIO1 is on JP1-1: is io1 - we connect to GPO6
-                                    // DIO1 is on JP5-3: is D2 - we connect to GPO5
+    .dio = {3, 6, LMIC_UNUSED_PIN}, // assumes external jumpers [feather_lora_jumper]
+                                    // DIO0 is hardwired to GPIO3
+                                    // DIO1 is jumpers to GPIO6
 };
 
+
+// use to get
+unsigned long convertSec(long time) {
+    return (time * US_PER_OSTICK) / 1000;
+}
+
 void onEvent (ev_t ev) {
-    Serial.print(os_getTime());
+    Serial.print(convertSec(os_getTime()));
     Serial.print(": ");
     switch(ev) {
         case EV_SCAN_TIMEOUT:
@@ -108,12 +144,17 @@ void onEvent (ev_t ev) {
             Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
             if(LMIC.dataLen) {
                 // data received in rx slot after tx
-                Serial.print(F("Data Received: "));
+                Serial.print(convertSec(os_getTime()));
+                Serial.print(F(": Data Received: "));
                 Serial.write(LMIC.frame+LMIC.dataBeg, LMIC.dataLen);
                 Serial.println();
             }
             // Schedule next transmission
+            Serial.print(convertSec(os_getTime()));
+            Serial.println(": Scheduling next transmition");
             os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
+            Serial.print(convertSec(os_getTime()));
+            Serial.println(": Next transmition complete");
             break;
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));
@@ -138,19 +179,23 @@ void onEvent (ev_t ev) {
 }
 
 void do_send(osjob_t* j){
+    Serial.print(convertSec(os_getTime()));
+    Serial.println(": Do Send");
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
         // Prepare upstream data transmission at the next possible time.
         LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
-        Serial.println(F("Packet queued"));
+        Serial.print(convertSec(os_getTime()));
+        Serial.println(F(": Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
 }
 
 void setup() {
-//    pinMode(13, OUTPUT); 
+    pinMode(13, OUTPUT);
+    digitalWrite(13, LOW);
     while (!Serial); // wait for Serial to be initialized
     Serial.begin(115200);
     delay(100);     // per sample code on RF_95 test
@@ -180,7 +225,7 @@ void setup() {
     memcpy_P(nwkskey, NWKSKEY, sizeof(NWKSKEY));
     LMIC_setSession (0x1, DEVADDR, nwkskey, appskey);
     #else
-    // If not running an AVR with PROGMEM, just use the arrays directly 
+    // If not running an AVR with PROGMEM, just use the arrays directly
     LMIC_setSession (0x1, DEVADDR, NWKSKEY, APPSKEY);
     #endif
 
@@ -216,22 +261,26 @@ void setup() {
     LMIC_setDrTxpow(DR_SF7,14);
 
     // Select SubBand
-    LMIC_selectSubBand(7);
+    LMIC_selectSubBand(1); // must align with subband on gateway. Zero origin
 
+//    pinMode(3, INPUT_PULLUP);
     // Start job
     do_send(&sendjob);
 }
 
 void loop() {
-    unsigned long now;
+/*    unsigned long now;
     now = millis();
     if ((now & 512) != 0) {
       digitalWrite(13, HIGH);
     }
     else {
       digitalWrite(13, LOW);
+
     }
-      
+  */
+
+//    digitalWrite(13, digitalRead(3)); //pin 3 inactive
     os_runloop_once();
-    
+
 }

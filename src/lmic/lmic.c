@@ -762,6 +762,7 @@ void LMIC_disableChannel (u1_t channel) {
         LMIC.channelMap[channel>>4] &= ~(1<<(channel&0xF));
 }
 
+<<<<<<< HEAD
 void LMIC_enableChannel (u1_t channel, bit_t fEnableIfTrue) {
     if( channel < 72+MAX_XCHANNELS ) {
         if (fEnableIfTrue) {
@@ -788,6 +789,38 @@ void LMIC_selectSubBand(u1_t uSubBandIndex) {
                                      iChannel <= uSubBandLastCh
                           );
     }
+=======
+void LMIC_enableChannel (u1_t channel) {
+    if( channel < 72+MAX_XCHANNELS )
+        LMIC.channelMap[channel>>4] |= (1<<(channel&0xF));
+}
+
+void  LMIC_enableSubBand (u1_t band) {
+  ASSERT(band > 0);
+  ASSERT(band <= 8);
+  u1_t start = (band-1) * 8;
+  u1_t end = start + 8;
+  for (int channel=start; channel < end; ++channel )
+      LMIC_enableChannel(channel);
+}
+void  LMIC_disableSubBand (u1_t band) {
+  ASSERT(band > 0);
+  ASSERT(band <= 8);
+  u1_t start = (band-1) * 8;
+  u1_t end = start + 8;
+  for (int channel=start; channel < end; ++channel )
+      LMIC_disableChannel(channel);
+}
+void  LMIC_selectSubBand (u1_t band) {
+  ASSERT(band > 0);
+  ASSERT(band <= 8);
+  for (int b=1; b<=8; ++b) {
+    if (band==b)
+      LMIC_enableSubBand(b);
+    else
+      LMIC_disableSubBand(b);
+  }
+>>>>>>> c69d40387df4f312f039b9eb779855b8b9904b27
 }
 
 static u1_t mapChannels (u1_t chpage, u2_t chmap) {

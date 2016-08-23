@@ -36,70 +36,16 @@
 
 // LoRaWAN end-device address (DevAddr)
 // See http://thethingsnetwork.org/wiki/AddressSpace
-<<<<<<< HEAD
+
 static const u4_t DEVADDR = 0x00000000 ;  // <-- Change this address for every node!
-=======
-static const u4_t DEVADDR = 0x######## ;  // <-- Change this address for every node!  
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
+
                                           // You must generate a 32-bit hexidecimal ID yourself
                                           // TODO: update randeui64 to provide a random 32-bit device ID
 
-// TTNCTL responds to adding a new device with a generated NWKSKEY and APPSKEY
-// The NWKSKEY and APPSKEY must be converted and placed in NWKSKEY[16] and APPSKEY[16] below
 
-/* Here is a quick bash command to convert the TTNCTL generated NWKSKEY and APPSKEY
-
-  Cut and paste the following function into a bash shell.
-<<<<<<< HEAD
-
-    function hexblob2c () { echo "$1" | awk '{ for (i=1; i < length($1); i += 2) { printf("0x%s, ", substr($1, i, 2)); } } END { printf("\n") }' ; }
-
-=======
-  
-    function hexblob2c () { echo "$1" | awk '{ for (i=1; i < length($1); i += 2) { printf("0x%s, ", substr($1, i, 2)); } } END { printf("\n") }' ; }
-  
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
-  In the same shell, do the following.  Register your device:
-    you@yourmachine: ~/where/ever/your/ttnctl/is$ ./ttnctl-darwin-amd64 devices register personalized 01234567
-      INFO Generating random NwkSKey and AppSKey...
-      INFO Registered personalized device           AppSKey=0123456789ABCDEF0123456789ABCDEF DevAddr=01234567 Flags=0 NwkSKey=FEDCBA9876543210FEDCBA9876543210
-<<<<<<< HEAD
-
-  Next, use hexblob2c to make your initialization values:
-    you@yourmachine: ~$ hexblob2c 0123456789ABCDEF0123456789ABCDEF
-    0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-
-=======
-  
-  Next, use hexblob2c to make your initialization values:
-    you@yourmachine: ~$ hexblob2c 0123456789ABCDEF0123456789ABCDEF
-    0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-  
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
-    you@yourmachine: ~$ hexblob2c FEDCBA9876543210FEDCBA9876543210
-    0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
-
-  Finally, paste the above strings into the APPSKEY and NWKSKEY initializers below
-
-*/
-
-// LoRaWAN AppSKey, application session key
-// This is the default Semtech key, which is used by the prototype TTN
-// network initially.
-<<<<<<< HEAD
-static const u1_t PROGMEM APPSKEY[16] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, };
-=======
-static const u1_t PROGMEM APPSKEY[16] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, }; 
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
-
-// LoRaWAN NwkSKey, network session key
-// This is the default Semtech key, which is used by the prototype TTN
-// network initially.
-<<<<<<< HEAD
 static const PROGMEM u1_t NWKSKEY[16] = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, };
-=======
-static const PROGMEM u1_t NWKSKEY[16] = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, }; 
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
+
+static const PROGMEM u1_t NWKSKEY[16] = { 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, };
 
 
 
@@ -129,19 +75,12 @@ const lmic_pinmap lmic_pins = {
 };
 
 
-<<<<<<< HEAD
+
 // use to get
 unsigned long convertSec(long time) {
     return (time * US_PER_OSTICK) / 1000;
 }
 
-=======
-// use to get 
-unsigned long convertSec(long time) {
-    return (time * US_PER_OSTICK) / 1000;
-}
- 
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
 void onEvent (ev_t ev) {
     Serial.print(convertSec(os_getTime()));
     Serial.print(": ");
@@ -228,11 +167,7 @@ void do_send(osjob_t* j){
 }
 
 void setup() {
-<<<<<<< HEAD
     pinMode(13, OUTPUT);
-=======
-    pinMode(13, OUTPUT); 
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
     digitalWrite(13, LOW);
     while (!Serial); // wait for Serial to be initialized
     Serial.begin(115200);
@@ -299,34 +234,22 @@ void setup() {
     LMIC_setDrTxpow(DR_SF7,14);
 
     // Select SubBand
-<<<<<<< HEAD
     LMIC_selectSubBand(1); // must align with subband on gateway. Zero origin
 
 //    pinMode(3, INPUT_PULLUP);
-=======
-    LMIC_selectSubBand(6); // must align with subband on gateway. Zero origin
-
-//    pinMode(3, INPUT_PULLUP); 
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
     // Start job
     do_send(&sendjob);
 }
 
 void loop() {
-/*    unsigned long now;
+   unsigned long now;
     now = millis();
     if ((now & 512) != 0) {
       digitalWrite(13, HIGH);
     }
     else {
       digitalWrite(13, LOW);
-<<<<<<< HEAD
-
-=======
-      
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
     }
-  */
 
 //    digitalWrite(13, digitalRead(3)); //pin 3 inactive
     os_runloop_once();

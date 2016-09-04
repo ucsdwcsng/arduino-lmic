@@ -257,21 +257,15 @@ bit_t LMIC_setupBand (u1_t bandidx, s1_t txpow, u2_t txcap);
 #endif
 bit_t LMIC_setupChannel (u1_t channel, u4_t freq, u2_t drmap, s1_t band);
 void  LMIC_disableChannel (u1_t channel);
-<<<<<<< HEAD
-<<<<<<< HEAD
-void  LMIC_enaableChannel (u1_t channel, bit_t fEnableIfTrue);
-=======
-void  LMIC_enableChannel (u1_t channel, bit_t fEnableIfTrue);
->>>>>>> 783e66762e11c4c025c8c612f2c9389c71c58d5e
+void  LMIC_enableChannel (u1_t channel);
 void  LMIC_selectSubBand (u1_t uSubBandIndex);
-=======
+
 #if defined(CFG_us915)
 void  LMIC_enableChannel (u1_t channel);
 void  LMIC_enableSubBand (u1_t band);
 void  LMIC_disableSubBand (u1_t band);
 void  LMIC_selectSubBand (u1_t band);
 #endif
->>>>>>> c69d40387df4f312f039b9eb779855b8b9904b27
 
 void  LMIC_setDrTxpow   (dr_t dr, s1_t txpow);  // set default/start DR/txpow
 void  LMIC_setAdrMode   (bit_t enabled);        // set ADR mode (if mobile turn off)

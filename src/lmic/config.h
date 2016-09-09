@@ -20,6 +20,11 @@
 #define US_PER_OSTICK (1 << US_PER_OSTICK_EXPONENT)
 #define OSTICKS_PER_SEC (1000000 / US_PER_OSTICK)
 
+// Change the SPI clock speed if you encounter errors
+// communicating with the radio.
+// The standard range is 125kHz-8MHz, but some boards can go faster.
+#define LMIC_SPI_FREQ 1E6
+
 // Set this to 1 to enable some basic debug output (using printf) about
 // RF settings used during transmission and reception. Set to 2 to
 // enable more verbose output. Make sure that printf is actually
@@ -31,6 +36,10 @@
 // (or any other Print object). This can be easy for debugging. The
 // current implementation only works on AVR, though.
 //#define LMIC_PRINTF_TO Serial
+
+// Enable this to use interrupt handler routines listening for RISING signals.
+// Otherwise, the library polls digital input lines for changes.
+//#define LMIC_USE_INTERRUPTS
 
 // Any runtime assertion failures are printed to this serial port (or
 // any other Print object). If this is unset, any failures just silently

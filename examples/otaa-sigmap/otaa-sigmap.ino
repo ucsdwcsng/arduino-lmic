@@ -33,13 +33,6 @@
 #include <hal/hal.h>
 #include <SPI.h>
 
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP085_U.h>
-
-Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
-
-
 // This EUI must be in little-endian format, so least-significant-byte
 // first. When copying an EUI from ttnctl output, this means to reverse
 // the bytes. For TTN issued EUIs the last bytes should be 0xD5, 0xB3,
@@ -58,10 +51,10 @@ void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8);}
 static const u1_t PROGMEM APPKEY[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
 
-static uint8_t mydata[32];
+static uint8_t mydata[16];
 static osjob_t sendjob;
 
-const unsigned TX_INTERVAL = 5;
+const unsigned TX_INTERVAL = 2;
 
 const lmic_pinmap lmic_pins = {
     .nss = 8,                       // chip select on feather (rf95module) CS
@@ -104,6 +97,10 @@ void onEvent (ev_t ev) {
             break;
         case EV_JOIN_FAILED:
             Serial.println(F("EV_JOIN_FAILED"));
+
+            // Disable link check validation (automatically enabled
+            // during join, but not supported by TTN at this time).
+            LMIC_setLinkCheckMode(0);
             break;
         case EV_REJOIN_FAILED:
             Serial.println(F("EV_REJOIN_FAILED"));
@@ -147,44 +144,39 @@ void onEvent (ev_t ev) {
     }
 }
 
+uint8_t pkt[4];
+uint16_t pkt_dr = 0;
+uint16_t pkt_seq = 0;
+
+static const dr_t data_rates[] = { DR_SF10, DR_SF9, DR_SF8, DR_SF7, DR_SF8C };
+
+
 void do_send(osjob_t* j){
+
+    // cycle through data rates
+    pkt_dr = (pkt_dr + 1) % (sizeof(data_rates) / sizeof(data_rates[0]));
+    LMIC_setDrTxpow(data_rates[pkt_dr], 14);
+
+    // track packet sequence number
+    pkt_seq += 1;
+
+    // build and send packet
+    uint8_t* p = pkt;
+    *p++ = (uint8_t)(pkt_dr & 0xFF);
+    *p++ = (uint8_t)(pkt_dr >> 8);
+    *p++ = (uint8_t)(pkt_seq & 0xFF);
+    *p++ = (uint8_t)(pkt_seq >> 8);
+
     Serial.print(convertSec(os_getTime()));
-    Serial.println(": Do Send" + LMIC_getSeqnoUp());
-
-    /* Get a new sensor event */
-    sensors_event_t event;
-    bmp.getEvent(&event);
-    float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
-    float pressure, temperature, altitude;
-
-    /* Display the results (barometric pressure is measure in hPa) */
-    if (event.pressure)
-    {
-      /* Display atmospheric pressure in hPa */
-      pressure = event.pressure;
-      bmp.getTemperature(&temperature);
-      altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure, temperature);
-
-//      Serial.print("Pressure: "); Serial.print(pressure); Serial.println(" hPa");
-//      Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" C");
-//      Serial.print("Altitude: "); Serial.print(altitude); Serial.println(" m");
-//      Serial.println("");
-    }
-    else
-    {
-      Serial.println("Sensor error");
-    }
-
-
+    Serial.println(": Do Send");
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
         // Prepare upstream data transmission at the next possible time.
-         ssize_t const nData = snprintf((char *)mydata, sizeof(mydata), "P: %d T: %d A: %d", (int)pressure, (int)temperature, (int)altitude );
-         Serial.println(nData);
-        LMIC_setTxData2(1, mydata, nData, 0);
+        LMIC_setTxData2(1, pkt, sizeof(pkt), 0);
         Serial.print(convertSec(os_getTime()));
+        Serial.print("Pkt_dr: "+ pkt_dr);
         Serial.println(F(": Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
@@ -194,17 +186,9 @@ void setup() {
     pinMode(13, OUTPUT);
     digitalWrite(13, LOW);
     while (!Serial); // wait for Serial to be initialized
-    Serial.begin(9600);
+    Serial.begin(115200);
     delay(100);     // per sample code on RF_95 test
     Serial.println(F("Starting"));
-
-    /* Initialise the sensor */
-    if(!bmp.begin()) {
-      /* There was a problem detecting the BMP085 ... check your connections */
-      Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
-      // while(1);
-    }
-
 
     #ifdef VCC_ENABLE
     // For Pinoccio Scout boards

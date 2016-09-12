@@ -106,44 +106,47 @@ unsigned long convertSec(long time) {
 }
 
 void onEvent (ev_t ev) {
-    Serial.print(convertSec(os_getTime()));
-    Serial.print(": ");
+    if (Serial)
+      {
+      Serial.print(convertSec(os_getTime()));
+      Serial.print(": ");
+      }
     switch(ev) {
         case EV_SCAN_TIMEOUT:
-            Serial.println(F("EV_SCAN_TIMEOUT"));
+            if (Serial) Serial.println(F("EV_SCAN_TIMEOUT"));
             break;
         case EV_BEACON_FOUND:
-            Serial.println(F("EV_BEACON_FOUND"));
+            if (Serial) Serial.println(F("EV_BEACON_FOUND"));
             break;
         case EV_BEACON_MISSED:
-            Serial.println(F("EV_BEACON_MISSED"));
+            if (Serial) Serial.println(F("EV_BEACON_MISSED"));
             break;
         case EV_BEACON_TRACKED:
-            Serial.println(F("EV_BEACON_TRACKED"));
+            if (Serial) Serial.println(F("EV_BEACON_TRACKED"));
             break;
         case EV_JOINING:
-            Serial.println(F("EV_JOINING"));
+            if (Serial) Serial.println(F("EV_JOINING"));
             break;
         case EV_JOINED:
-            Serial.println(F("EV_JOINED"));
+            if (Serial) Serial.println(F("EV_JOINED"));
 
             // Disable link check validation (automatically enabled
             // during join, but not supported by TTN at this time).
             LMIC_setLinkCheckMode(0);
             break;
         case EV_RFU1:
-            Serial.println(F("EV_RFU1"));
+            if (Serial) Serial.println(F("EV_RFU1"));
             break;
         case EV_JOIN_FAILED:
-            Serial.println(F("EV_JOIN_FAILED"));
+            if (Serial) if (Serial) Serial.println(F("EV_JOIN_FAILED"));
             break;
         case EV_REJOIN_FAILED:
-            Serial.println(F("EV_REJOIN_FAILED"));
+            if (Serial) Serial.println(F("EV_REJOIN_FAILED"));
             break;
             break;
         case EV_TXCOMPLETE:
-            Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
-            if(LMIC.dataLen) {
+            if (Serial) Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
+            if(LMIC.dataLen && Serial) {
                 // data received in rx slot after tx
                 Serial.print(convertSec(os_getTime()));
                 Serial.print(F(": Data Received: "));
@@ -151,39 +154,42 @@ void onEvent (ev_t ev) {
                 Serial.println();
             }
             // Schedule next transmission
-            Serial.print(convertSec(os_getTime()));
-            Serial.println(": Scheduling next transmition");
+            if (Serial) Serial.print(convertSec(os_getTime()));
+            if (Serial) Serial.println(": Scheduling next transmission");
             os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
-            Serial.print(convertSec(os_getTime()));
-            Serial.println(": Next transmition complete");
+            if (Serial) Serial.print(convertSec(os_getTime()));
+            if (Serial) Serial.println(": Next transmission complete");
             break;
         case EV_LOST_TSYNC:
-            Serial.println(F("EV_LOST_TSYNC"));
+            if (Serial) Serial.println(F("EV_LOST_TSYNC"));
             break;
         case EV_RESET:
-            Serial.println(F("EV_RESET"));
+            if (Serial) Serial.println(F("EV_RESET"));
             break;
         case EV_RXCOMPLETE:
             // data received in ping slot
-            Serial.println(F("EV_RXCOMPLETE"));
+            if (Serial) Serial.println(F("EV_RXCOMPLETE"));
             break;
         case EV_LINK_DEAD:
-            Serial.println(F("EV_LINK_DEAD"));
+            if (Serial) Serial.println(F("EV_LINK_DEAD"));
             break;
         case EV_LINK_ALIVE:
-            Serial.println(F("EV_LINK_ALIVE"));
+            if (Serial) Serial.println(F("EV_LINK_ALIVE"));
             break;
          default:
-            Serial.println(F("Unknown event"));
+            if (Serial) Serial.println(F("Unknown event"));
             break;
     }
 }
 
 void do_send(osjob_t* j){
-    Serial.print(convertSec(os_getTime()));
-    Serial.print(": Do Send ");
-    Serial.println(LMIC_getSeqnoUp());
-
+    if (Serial)
+      {
+      Serial.print(convertSec(os_getTime()));
+      Serial.print(": Do Send ");
+      Serial.println(LMIC_getSeqnoUp());
+      }
+      
     /* Get a new sensor event */
     sensors_event_t event;
     bmp.getEvent(&event);
@@ -205,20 +211,22 @@ void do_send(osjob_t* j){
     }
     else
     {
-      Serial.println("Sensor error");
+      if (Serial) Serial.println("Sensor error");
     }
 
 
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
-        Serial.println(F("OP_TXRXPEND, not sending"));
+        if (Serial) Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
         // Prepare upstream data transmission at the next possible time.
          ssize_t const nData = snprintf((char *)mydata, sizeof(mydata), "P: %d T: %d A: %d", (int)pressure, (int)temperature, (int)altitude );
          LMIC_setTxData2(1, mydata, nData, 0);
- 
-        Serial.print(convertSec(os_getTime()));
-        Serial.println(F(": Packet queued"));
+         if (Serial)
+          {
+          Serial.print(convertSec(os_getTime()));
+          Serial.println(F(": Packet queued"));
+          }
     }
     // Next TX is scheduled after TX_COMPLETE event.
 }
@@ -229,12 +237,12 @@ void setup() {
     while (!Serial); // wait for Serial to be initialized
     Serial.begin(9600);
     delay(100);     // per sample code on RF_95 test
-    Serial.println(F("Starting"));
+    if (Serial) Serial.println(F("Starting"));
 
     /* Initialise the sensor */
     if(!bmp.begin()) {
       /* There was a problem detecting the BMP085 ... check your connections */
-      Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
+      if (Serial) Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
       // while(1);
     }
 

@@ -46,8 +46,11 @@ Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 // for Win10, but not tested). Copy everything from after the '/*' up to 
 // (but not including) the '*/', and paste to the bash command window. 
 // Then use the results to replace the corresponding lines below.
+//
+// Change DEVEUI in the following to the DEVEUI of the device you want
+// to provision. 
 /*
-ttnctl devices info 0002cc010000000A | awk '
+ttnctl devices info DEVEUI | awk '
 function revhex(sName, s,     r, i) 
    { # r, i are local variables
    r = ""; 

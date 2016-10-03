@@ -234,7 +234,8 @@ void do_send(osjob_t* j){
 void setup() {
     pinMode(13, OUTPUT);
     digitalWrite(13, LOW);
-    while (!Serial); // wait for Serial to be initialized
+    // with this version, we don't need to wait
+    //     while (!Serial); // wait for Serial to be initialized
     Serial.begin(9600);
     delay(100);     // per sample code on RF_95 test
     if (Serial) Serial.println(F("Starting"));

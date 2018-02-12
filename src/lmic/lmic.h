@@ -237,6 +237,7 @@ struct lmic_t {
     u4_t        netid;        // current network id (~0 - none)
     u2_t        opmode;
     u1_t        upRepeat;     // configured up repeat
+    u1_t        txRepeat;     // current repeat count
     s1_t        adrTxPow;     // ADR adjusted TX power
     u1_t        datarate;     // current data rate
     u1_t        errcr;        // error coding rate (used for TX only)

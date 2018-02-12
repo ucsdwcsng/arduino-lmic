@@ -1168,6 +1168,7 @@ static void processRx2DnData (xref2osjob_t osjob) {
         initTxrxFlags(__func__, 0);  // nothing in 1st/2nd DN slot
         // Delay callback processing to avoid up TX while gateway is txing our missed frame!
         // Since DNW2 uses SF12 by default we wait 3 secs.
+        // BUG(tmm@mcci.com) this should be 400ms in US, so needs to be regional (issue 55)
         os_setTimedCallback(&LMIC.osjob,
                             (os_getTime() + DNW2_SAFETY_ZONE + LMICcore_rndDelay(2)),
                             FUNC_ADDR(processRx2DnDataDelay));
@@ -1311,8 +1312,22 @@ static void buildDataFrame (void) {
     if( txdata ) {
         if( LMIC.pendTxConf ) {
             // Confirmed only makes sense if we have a payload (or at least a port)
+            // LoRaWAN 1.0.2: retransmit and reduce strength per spec 18.4
+            // LoRaWAN 1.1: use LMIC.upRepeat to strictly govern uplink retransmissions
+            // The pre-1.1 code uses LMIC.txCnt both as a proxy for unconfirmed (if zero)
+            // or confirmed if > 0.
             LMIC.frame[OFF_DAT_HDR] = HDR_FTYPE_DCUP | HDR_MAJOR_V1;
             if( LMIC.txCnt == 0 ) LMIC.txCnt = 1;
+        } else {
+            if (LMIC.upRepeat > 1) {
+                // we have a retransmission policy in effect (see LoRaWAN 1.0.2/5.2 or 
+                // 1.0.2/5.3). A value of 0 is never accepted from the net, and so 
+                // LMIC.upRepeat == 0 means that we're in the default state. 
+                // For 1.0.2, LMIC.upRepeat is only for unconfirmed.
+                LMIC.txRepeat = LMIC.upRepeat - 1;
+            } else {
+                LMIC.txRepeat = 0;
+            }
         }
         LMIC.frame[end] = LMIC.pendTxPort;
         os_copyMem(LMIC.frame+end+1, LMIC.pendTxData, dlen);
@@ -1376,7 +1391,7 @@ static void startScan (void) {
     if( (LMIC.opmode & OP_SHUTDOWN) != 0 )
         return;
     // Cancel onging TX/RX transaction
-    LMIC.txCnt = LMIC.dnConf = LMIC.bcninfo.flags = 0;
+    LMIC.txRepeat = LMIC.txCnt = LMIC.dnConf = LMIC.bcninfo.flags = 0;
     LMIC.opmode = (LMIC.opmode | OP_SCAN) & ~(OP_TXRXPEND);
     LMICbandplan_setBcnRxParams();
     LMIC.rxtime = LMIC.bcninfo.txtime = os_getTime() + sec2osticks(BCN_INTV_sec+1);
@@ -1473,7 +1488,7 @@ bit_t LMIC_startJoining (void) {
         // Cancel scanning
         LMIC.opmode &= ~(OP_SCAN|OP_REJOIN|OP_LINKDEAD|OP_NEXTCHNL);
         // Setup state
-        LMIC.rejoinCnt = LMIC.txCnt = 0;
+        LMIC.rejoinCnt = LMIC.txRepeat = LMIC.txCnt = 0;
         LMICbandplan_initJoinLoop();
         LMIC.opmode |= OP_JOINING;
         // reportEvent will call engineUpdate which then starts sending JOIN REQUESTS
@@ -1511,6 +1526,12 @@ static bit_t processDnData (void) {
 
     if( LMIC.dataLen == 0 ) {
       norx:
+        // for 1.0.2, txCnt is slavishly followed for confirmed
+        //   and each retry causes the power to be adjusted.
+        //   For unconfirmed, we similarly keep repeating but
+        //   based on LMIC.txRepeat being non-zero.
+        // for 1.1, LMIC.txCnt has to be governed by LMIC.upRepeat,
+        //   and we don't adjust the power or datarate.
         if( LMIC.txCnt != 0 ) {
             if( LMIC.txCnt < TXCONF_ATTEMPTS ) {
                 LMIC.txCnt += 1;
@@ -1522,6 +1543,21 @@ static bit_t processDnData (void) {
                 return 1;
             }
             initTxrxFlags(__func__, TXRX_NACK | TXRX_NOPORT);
+        } if ( LMIC.txRepeat != 0 ) {
+            --LMIC.txRepeat;
+            //
+            // Schedule a retransmission, but don't change power or SF.
+            // Delay before TX in case we the gateway is in fact sending
+            // a message during the RX2 window.
+            //
+            // BUG(tmm@mcci.com) This retry period
+            // ought to be regionalized because in Europe it must
+            // be 3 sec, but in US it can be 400ms. (issue 55)
+            //
+            txDelay(LMIC.rxtime, RETRY_PERIOD_secs);
+            LMIC.opmode &= ~OP_TXRXPEND;
+            engineUpdate();
+            return 1;
         } else {
             // Nothing received - implies no port
             initTxrxFlags(__func__, TXRX_NOPORT);
@@ -1568,6 +1604,9 @@ static bit_t processDnData (void) {
             return 0;
         goto norx;
     }
+    // whether for LMIC 1.0.2 or 1.1, any successful downlink stops
+    // us from further repetitions of this transmission.
+    LMIC.txRepeat = 0;
     goto txcomplete;
 }
 

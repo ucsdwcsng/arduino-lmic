@@ -1228,7 +1228,7 @@ void radio_irq_handler_v2 (u1_t dio, ostime_t now) {
     if( (readReg(RegOpMode) & OPMODE_LORA) != 0) { // LORA modem
         u1_t flags = readReg(LORARegIrqFlags);
         LMIC.saveIrqFlags = flags;
-        LMICOS_logEventUint32("radio_irq_handler_v2: LoRa", flags);
+        LMICOS_logEventUint32("*radio_irq_handler_v2: LoRa", flags);
         LMIC_X_DEBUG_PRINTF("IRQ=%02x\n", flags);
         if( flags & IRQ_LORA_TXDONE_MASK ) {
             // save exact tx time

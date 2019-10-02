@@ -169,6 +169,11 @@ void LMICOS_logEvent(const char *pMessage)
 
 void LMICOS_logEventUint32(const char *pMessage, uint32_t datum)
     {
+    if (pMessage[0] == '*') {
+        digitalWrite(A0, LOW);
+        digitalWrite(A1, LOW);
+    }
+
     eventQueue.putEvent(ev_t(-2), pMessage, datum);
     }
 #endif // LMIC_ENABLE_event_logging
@@ -192,7 +197,9 @@ void myEventCb(void *pUserData, ev_t ev) {
     if (ev == EV_TXSTART) {
         lastWasTxStart = true;
         lastTxStartTime = millis();
+        digitalWrite(A0, HIGH);
     } else if (ev == EV_RXSTART) {
+        digitalWrite(A1, HIGH);
         lastWasTxStart = false;
     }
     if (ev == EV_JOINING) {
@@ -630,6 +637,12 @@ void setup() {
     Serial.begin(115200);
     setup_printSignOn();
     setup_calibrateSystemClock();
+
+    // set up monitoring lines
+    digitalWrite(A0, LOW);
+    pinMode(A0, OUTPUT);
+    digitalWrite(A1, LOW);
+    pinMode(A1, OUTPUT);
 
     // LMIC init using the computed target
     const auto pPinMap = Arduino_LMIC::GetPinmap_ThisBoard();

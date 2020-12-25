@@ -837,42 +837,56 @@ void configCAD () {
 
 uint8_t cadlora (){ 
 
-    // chose a random DIFS duration interms of CADs.
-    // a clear DIFS window is mandatory to conclude a CH/SF is free.
-    uint8_t cadCountMax =  os_getRndU1() % LMIC.sysname_backoff_cfg1 + 1;
-    cadCountMax = cadCountMax * LMIC.sysname_cad_difs;
-    // cadCountMax = 30;
+	// TODO: Implement proper DCF  
+	// A clear DIFS is required to transmit
+	// If a DIFS is not clear, then backoff
+	// Max backoffs are increased in an exponential manner ?
 
-    configCAD ();
-    
-    // perform CAD cadCountMax number of times as per 
-    for (uint8_t cadCount=0; cadCount< cadCountMax; cadCount++) { 
+	// TODO: Implement non-blocking CAD - not done for now
+    configCAD();
 
-        // clear all radio IRQ flags
-        writeReg(LORARegIrqFlags, 0xFF);
-       
-        // set radio to CAD mode.
-        opmode(OPMODE_CAD);
-        u1_t flags = 0;
-        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
-            flags = readReg(LORARegIrqFlags);
+    // Variables Required
+    // 1. DIFS Length in number of CADs -> LMIC.sysname_cad_difs
+    // 2. Backoff Unit Length in ms -> LMIC.sysname_backoff_cfg1
+    // 3. Max backoff multiplier -> LMIC.sysname_backoff_cfg2
+    // 4. Exponential Backoff?
+
+	u2_t cur_backoff = 0;
+	bit_t clear_bit = 0;
+
+	while(!clear_bit){
+
+		// Implement HAL Backoff
+		cur_backoff = os_getRndU1() % LMIC.sysname_backoff_cfg2 + 1;
+		hal_waitUntil(os_getTime() + ms2osticks(cur_backoff*LMIC.sysname_backoff_cfg1));
+
+		clear_bit = 1;
+
+		for(u2_t ind = 0;ind < LMIC.sysname_cad_difs;ind++){
+			// clear all radio IRQ flags
+	        writeReg(LORARegIrqFlags, 0xFF);
+	        // set radio to CAD mode.
+	        opmode(OPMODE_CAD);
+	        u1_t flags = 0;
+	        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+	            flags = readReg(LORARegIrqFlags);
+	        }
+	        // Incremend CAD Counter
+	        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+	        if (flags & IRQ_LORA_CDDETD_MASK) {
+	        	#if LMIC_DEBUG_LEVEL > 0
+	        		LMIC_DEBUG_PRINTF("CAD SENSED!");
+	        	#endif
+	            clear_bit=0;
+	        }
         }
-        // Incremend CAD Counter
-        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
 
-        // SYSNAME
-        // Use a RNG to generate a backoff number BN
-        // ignore BN CADs and then start counting again after that.
-        // This will give correct backoff time
+		#if LMIC_DEBUG_LEVEL > 0
+		LMIC_DEBUG_PRINTF("Clear Bit= %d, LMIC.sysname_cad_difs=%d\n",clear_bit,LMIC.sysname_cad_difs);
+		#endif
 
-        // check if CAD engine sensed an on-going frame.
-        if (flags & IRQ_LORA_CDDETD_MASK) {
-        	#if LMIC_DEBUG_LEVEL > 0
-        		LMIC_DEBUG_PRINTF("CAD SENSED! CADNOW=%d, CADMAX=%d\n",cadCount,cadCountMax);
-        	#endif
-            cadCount=0;
-        }
-    }
+	}
     // reaching this point means CH/SF combination is free.
     writeReg(LORARegIrqFlags, 0xFF);
     // hal_enableIRQs();// this is not strictly needed.

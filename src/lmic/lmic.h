@@ -540,10 +540,14 @@ struct lmic_t {
 #endif
 
 #if LMIC_CSMA_LEVEL>0
+// 1. DIFS Length in number of CADs -> LMIC.sysname_cad_difs
+// 2. Backoff Unit Length in ms -> LMIC.sysname_backoff_cfg1
+// 3. Max backoff multiplier -> LMIC.sysname_backoff_cfg2
     bit_t       sysname_enable_cad;
     u4_t        sysname_cad_counter;
     u1_t        sysname_cad_difs;
     u1_t        sysname_backoff_cfg1;
+    u1_t        sysname_backoff_cfg2;
 
 #endif
 

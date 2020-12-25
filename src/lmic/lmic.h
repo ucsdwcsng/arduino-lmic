@@ -539,6 +539,14 @@ struct lmic_t {
     u2_t        activeChannels500khz;
 #endif
 
+#if LMIC_CSMA_LEVEL>0
+    bit_t       sysname_enable_cad;
+    u4_t        sysname_cad_counter;
+    u1_t        sysname_cad_difs;
+    u1_t        sysname_backoff_cfg1;
+
+#endif
+
     /* (u)int16_t things */
     rps_t       rps;            // radio parameter selections: SF, BW, CodingRate, NoCrc, implicit hdr
     u2_t        opmode;         // engineUpdate() operating mode flags

@@ -44,7 +44,7 @@
 
 // This is the SX1272/SX1273 radio, which is also used on the HopeRF
 // RFM92 boards.
-//#define CFG_sx1272_radio 1
+#define CFG_sx1272_radio 1
 // This is the SX1276/SX1277/SX1278/SX1279 radio, which is also used on
 // the HopeRF RFM95 boards.
 //#define CFG_sx1276_radio 1
@@ -211,5 +211,8 @@
 #if !defined(LMIC_ENABLE_arbitrary_clock_error)
 # define LMIC_ENABLE_arbitrary_clock_error 0	/* PARAM */
 #endif
+
+// LMIC CAD from LORAMAC
+# define LMIC_CSMA_LEVEL 1
 
 #endif // _lmic_config_h_

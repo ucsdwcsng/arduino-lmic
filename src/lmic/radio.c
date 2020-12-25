@@ -665,6 +665,7 @@ static void configPower () {
     }
 
 #elif CFG_sx1272_radio
+
     if (req_pw >= 20) {
         policy = LMICHAL_radio_tx_power_policy_20dBm;
             eff_pw = 20;
@@ -684,7 +685,12 @@ static void configPower () {
         }
     }
 
-    policy = hal_getTxPowerPolicy(policy, eff_pw, LMIC.freq);
+    // The below line sets Power to be high
+    policy = LMICHAL_radio_tx_power_policy_rfo;
+    // eff_pw = -1;
+
+    // WCSNG Commenting for better power.
+    // policy = hal_getTxPowerPolicy(policy, eff_pw, LMIC.freq);
 
     switch (policy) {
     default:
@@ -794,7 +800,93 @@ static void txfsk () {
     opmode(OPMODE_TX);
 }
 
+// save code space if CSMA level is 0
+#if LMIC_CSMA_LEVEL > 0
+void configCAD () {
+    // hal_disableIRQs();
+
+    // manually reset radio
+#ifdef CFG_sx1276_radio
+    hal_pin_rst(0); // drive RST pin low
+#else
+    hal_pin_rst(1); // drive RST pin high
+#endif
+    hal_waitUntil(os_getTime()+ms2osticks(1)); // wait >100us
+    hal_pin_rst(2); // configure RST pin as floating
+    hal_waitUntil(os_getTime()+ms2osticks(5)); // wait 5ms
+
+    // mask all IRQ bits except CAD completed & detected
+    writeReg(LORARegIrqFlagsMask, ~(IRQ_LORA_CDDONE_MASK | IRQ_LORA_CDDETD_MASK) );
+
+    // set radio to sleep mode
+    writeReg(RegOpMode, OPMODE_LORA | OPMODE_SLEEP);
+    //ASSERT((readReg(RegOpMode) & OPMODE_LORA) != 0);
+
+    // configure frequency
+    configChannel();
+
+    // set back to idle mode
+    writeReg(RegOpMode, OPMODE_LORA | OPMODE_STANDBY);
+    
+    // Configure SF
+    configLoraModem();
+
+    // Reset CAD Counter
+    LMIC.sysname_cad_counter = 0;
+}
+
+uint8_t cadlora (){ 
+
+    // chose a random DIFS duration interms of CADs.
+    // a clear DIFS window is mandatory to conclude a CH/SF is free.
+    uint8_t cadCountMax =  os_getRndU1() % LMIC.sysname_backoff_cfg1 + 1;
+    cadCountMax = cadCountMax * LMIC.sysname_cad_difs;
+    // cadCountMax = 30;
+
+    configCAD ();
+    
+    // perform CAD cadCountMax number of times as per 
+    for (uint8_t cadCount=0; cadCount< cadCountMax; cadCount++) { 
+
+        // clear all radio IRQ flags
+        writeReg(LORARegIrqFlags, 0xFF);
+       
+        // set radio to CAD mode.
+        opmode(OPMODE_CAD);
+        u1_t flags = 0;
+        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+            flags = readReg(LORARegIrqFlags);
+        }
+        // Incremend CAD Counter
+        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+        // SYSNAME
+        // Use a RNG to generate a backoff number BN
+        // ignore BN CADs and then start counting again after that.
+        // This will give correct backoff time
+
+        // check if CAD engine sensed an on-going frame.
+        if (flags & IRQ_LORA_CDDETD_MASK) {
+        	#if LMIC_DEBUG_LEVEL > 0
+        		LMIC_DEBUG_PRINTF("CAD SENSED! CADNOW=%d, CADMAX=%d\n",cadCount,cadCountMax);
+        	#endif
+            cadCount=0;
+        }
+    }
+    // reaching this point means CH/SF combination is free.
+    writeReg(LORARegIrqFlags, 0xFF);
+    // hal_enableIRQs();// this is not strictly needed.
+    return 0;
+}
+#endif
+
 static void txlora () {
+// enable CSMA only if level is above 0
+#if LMIC_CSMA_LEVEL > 0
+	if(LMIC.sysname_enable_cad)
+    	cadlora();
+#endif
+
     // select LoRa modem (from sleep mode)
     //writeReg(RegOpMode, OPMODE_LORA);
     opmodeLora();
@@ -1329,7 +1421,8 @@ void radio_irq_handler_v2 (u1_t dio, ostime_t now) {
 
             LMIC_X_DEBUG_PRINTF("RX snr=%u rssi=%d\n", LMIC.snr/4, rssi);
             // ugh compatibility requires a biased range. RSSI
-            LMIC.rssi = (s1_t) (RSSI_OFF + (rssi < -196 ? -196 : rssi > 63 ? 63 : rssi)); // RSSI [dBm] (-196...+63)
+            // WCSNG: We changed the -196 number to -192 to prevent int8_t underflow
+            LMIC.rssi = (s1_t) (RSSI_OFF + (rssi < -192 ? -192 : rssi > 63 ? 63 : rssi)); // RSSI [dBm] (-196...+63)
         } else if( flags & IRQ_LORA_RXTOUT_MASK ) {
             // indicate timeout
             LMIC.dataLen = 0;

@@ -549,6 +549,8 @@ struct lmic_t {
     u1_t        sysname_backoff_cfg1;
     u1_t        sysname_backoff_cfg2;
 
+    u4_t        sysname_cad_freq_vec[4];
+
 #endif
 
     /* (u)int16_t things */

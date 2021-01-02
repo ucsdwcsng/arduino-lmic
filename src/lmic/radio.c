@@ -897,8 +897,11 @@ uint8_t cadlora (){
 static void txlora () {
 // enable CSMA only if level is above 0
 #if LMIC_CSMA_LEVEL > 0
-	if(LMIC.sysname_enable_cad)
+	if(LMIC.sysname_enable_cad){
+		LMIC.freq = LMIC.sysname_cad_freq_vec[LMIC.sysname_enable_cad];
     	cadlora();
+    	LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+	}
 #endif
 
     // select LoRa modem (from sleep mode)

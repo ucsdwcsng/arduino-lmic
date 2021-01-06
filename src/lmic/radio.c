@@ -901,6 +901,8 @@ static void txlora () {
 		LMIC.freq = LMIC.sysname_cad_freq_vec[LMIC.sysname_enable_cad-1];
     	cadlora();
     	LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+	} else{
+		LMIC.sysname_cad_counter = 0;
 	}
 #endif
 

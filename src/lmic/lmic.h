@@ -548,10 +548,13 @@ struct lmic_t {
     u1_t        sysname_cad_difs;
     u1_t        sysname_backoff_cfg1;
     u1_t        sysname_backoff_cfg2;
+    u1_t        sysname_kill_cad_delay;
 
     u4_t        sysname_cad_freq_vec[4];
 
+    rps_t       sysname_cad_rps;
 #endif
+    rps_t       sysname_tx_rps;
 
     /* (u)int16_t things */
     rps_t       rps;            // radio parameter selections: SF, BW, CodingRate, NoCrc, implicit hdr

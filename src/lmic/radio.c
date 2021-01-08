@@ -800,12 +800,102 @@ static void txfsk () {
     opmode(OPMODE_TX);
 }
 
+#if SYSNAME_TX_BTONE == 1
+void configrevCAD () {
+    // mask all IRQ bits except CAD completed & detected
+    writeReg(LORARegIrqFlagsMask, ~(IRQ_LORA_CDDONE_MASK | IRQ_LORA_CDDETD_MASK) );
+
+    // set radio to sleep mode
+    writeReg(RegOpMode, OPMODE_LORA | OPMODE_SLEEP);
+    //ASSERT((readReg(RegOpMode) & OPMODE_LORA) != 0);
+
+    // configure frequency
+    configChannel();
+
+
+    // set back to idle mode
+    writeReg(RegOpMode, OPMODE_LORA | OPMODE_STANDBY);
+    
+    // Configure SF
+    configLoraModem();
+}
+
+void configall_fast(){
+
+	// OPMODE
+	opmodeLora();
+
+    // Configure SF
+    configLoraModem();
+
+     // configure frequency
+    configChannel();
+
+    // config power
+    configPower();
+}
+
+// Busytone specific cad
+uint8_t revcadlora (){ 
+
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("DOING REV CAD");
+	#endif
+
+    configrevCAD();
+
+	bit_t clear_bit = 1;
+
+	while(clear_bit){
+
+		for(u2_t ind = 0;ind < LMIC.sysname_btone_difs;ind++){
+			// clear all radio IRQ flags
+			writeReg(LORARegIrqFlags, 0xFF);
+			// set radio to CAD mode.
+			opmode(OPMODE_CAD);
+			u1_t flags = 0;
+			while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+			flags = readReg(LORARegIrqFlags);
+			}
+
+			if (flags & IRQ_LORA_CDDETD_MASK) {
+			#if LMIC_DEBUG_LEVEL > 0
+				LMIC_DEBUG_PRINTF("REV CAD SENSED!");
+			#endif
+				clear_bit++;
+			}
+
+			if(clear_bit>=LMIC.sysname_btone_sensen+2){
+				LMIC.sysname_btone_txmode = 1;
+				clear_bit = 0;
+				break;
+			} else{
+				clear_bit = 1;
+			}
+
+
+		}
+
+		#if LMIC_DEBUG_LEVEL > 0
+			LMIC_DEBUG_PRINTF("Clear Bit= %d, LMIC.sysname_btone_difs=%d\n",clear_bit,LMIC.sysname_btone_difs);
+		#endif
+
+	}
+    return 0;
+}
+
+#endif
+
 // save code space if CSMA level is 0
 #if LMIC_CSMA_LEVEL > 0
 void configCAD () {
     // hal_disableIRQs();
 
     if(!LMIC.sysname_kill_cad_delay){
+
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("CAD DELAY");
+	#endif
     // manually reset radio
 #ifdef CFG_sx1276_radio
     hal_pin_rst(0); // drive RST pin low
@@ -836,6 +926,7 @@ void configCAD () {
     // Reset CAD Counter
     LMIC.sysname_cad_counter = 0;
 }
+
 
 uint8_t cadlora (){ 
 
@@ -918,6 +1009,15 @@ uint8_t cadlora (){
 #endif
 
 static void txlora () {
+// Enable Reverse CSMA for busytone purpose
+#if SYSNAME_TX_BTONE == 1
+	if(!LMIC.sysname_btone_txmode){
+		LMIC.freq = LMIC.sysname_btone_rx_freq;
+		LMIC.rps = LMIC.sysname_btone_rx_rps;
+		revcadlora();
+		LMIC.freq = LMIC.sysname_btone_tx_freq;
+	}
+#endif
 // enable CSMA only if level is above 0
 #if LMIC_CSMA_LEVEL > 0
 	if(LMIC.sysname_enable_cad){
@@ -933,9 +1033,10 @@ static void txlora () {
 
     // select LoRa modem (from sleep mode)
     //writeReg(RegOpMode, OPMODE_LORA);
+
     opmodeLora();
     ASSERT((readReg(RegOpMode) & OPMODE_LORA) != 0);
-
+#if SYSNAME_TX_BTONE == 0
     // enter standby mode (required for FIFO loading))
     opmode(OPMODE_STANDBY);
     // configure LoRa modem (cfg1, cfg2)
@@ -943,12 +1044,17 @@ static void txlora () {
     // configure frequency
     configChannel();
     // configure output power
+#endif
+
 #ifdef CFG_sx1272_radio
     writeReg(RegPaRamp, (readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
 #elif defined(CFG_sx1276_radio)
     writeReg(RegPaRamp, 0x08);     // set PA ramp-up time 50 uSec, clear FSK bits
 #endif
+
+#if SYSNAME_TX_BTONE == 0
     configPower();
+#endif
     // set sync word
     writeReg(LORARegSyncWord, LORA_MAC_PREAMBLE);
 
@@ -964,9 +1070,10 @@ static void txlora () {
     writeReg(LORARegFifoAddrPtr, 0x00);
     writeReg(LORARegPayloadLength, LMIC.dataLen);
 
+#if SYSNAME_TX_BTONE == 0
     // download buffer to the radio FIFO
     writeBuf(RegFifo, LMIC.frame, LMIC.dataLen);
-
+#endif
     // enable antenna switch for TX
     hal_pin_rxtx(1);
 
@@ -1006,7 +1113,9 @@ static void starttx () {
         LMIC_DEBUG_PRINTF("?%s: OPMODE != OPMODE_SLEEP: %#02x\n", __func__, rOpMode);
 #endif
         opmode(OPMODE_SLEEP);
+#if SYSNAME_TX_BTONE == 0
         hal_waitUntil(os_getTime() + ms2osticks(1));
+#endif
     }
 
 #if LMIC_CSMA_LEVEL < 1 
@@ -1032,6 +1141,7 @@ static void starttx () {
     }
     // the radio will go back to STANDBY mode as soon as the TX is finished
     // the corresponding IRQ will inform us about completion.
+
 }
 
 enum { RXMODE_SINGLE, RXMODE_SCAN, RXMODE_RSSI };

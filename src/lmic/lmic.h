@@ -556,6 +556,15 @@ struct lmic_t {
 #endif
     rps_t       sysname_tx_rps;
 
+#if SYSNAME_TX_BTONE == 1
+    u4_t sysname_btone_rx_freq;
+    rps_t sysname_btone_rx_rps;
+    u4_t sysname_btone_tx_freq;
+    u1_t sysname_btone_txmode;
+    u1_t sysname_btone_sensen;
+    u1_t sysname_btone_difs;
+#endif
+
     /* (u)int16_t things */
     rps_t       rps;            // radio parameter selections: SF, BW, CodingRate, NoCrc, implicit hdr
     u2_t        opmode;         // engineUpdate() operating mode flags

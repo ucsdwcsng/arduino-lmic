@@ -942,6 +942,85 @@ void configCAD () {
     configLoraModem();
 }
 
+uint8_t lmaccadlora (){
+
+    // Reset CAD Counter
+    LMIC.sysname_cad_counter = 0;
+    // Reset LBT Counter
+    LMIC.sysname_lbt_counter = 0;
+
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("DOING LMAC CAD");
+	#endif
+
+	u2_t cur_backoff = 0;
+	bit_t clear_bit = 0;
+
+    // Number of DIFS to Count-down
+    cur_backoff = os_getRndU1() % LMIC.sysname_backoff_cfg2 + 1; 
+
+	while(cur_backoff>0){
+
+		// Implement HAL Backoff
+		clear_bit = 1;
+
+		if (LMIC.lbt_ticks > 0) {
+	        oslmic_radio_rssi_t rssi;
+	        radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
+	        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+
+	            #if LMIC_DEBUG_LEVEL > 0
+			        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+				#endif
+
+		    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+		        // Channel is not free
+		        clear_bit = 0;
+		    }
+		}
+
+		configCAD();
+
+		#if LMIC_DEBUG_LEVEL > 0
+			LMIC_DEBUG_PRINTF("FIXED DIFS:? %d\n",LMIC.sysname_use_fixed_difs);
+		#endif
+
+		if(clear_bit || LMIC.sysname_use_fixed_difs){
+			// if RSSI is declared clear, do an extra CSMA with CAD
+			for(u2_t ind = 0;ind < LMIC.sysname_cad_difs;ind++){
+				// clear all radio IRQ flags
+		        writeReg(LORARegIrqFlags, 0xFF);
+		        // set radio to CAD mode.
+		        opmode(OPMODE_CAD);
+		        u1_t flags = 0;
+		        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+		            flags = readReg(LORARegIrqFlags);
+		        }
+		        // Increment CAD Counter
+		        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+		        if (flags & IRQ_LORA_CDDETD_MASK) {
+		        	#if LMIC_DEBUG_LEVEL > 0
+		        		LMIC_DEBUG_PRINTF("CAD SENSED!");
+		        	#endif
+		            clear_bit=0;
+		        }
+	        }
+		}
+		cur_backoff = cur_backoff-clear_bit;
+
+		#if LMIC_DEBUG_LEVEL > 0
+			LMIC_DEBUG_PRINTF("Clear Bit= %d, LMIC.sysname_cad_difs=%d\n",clear_bit,LMIC.sysname_cad_difs);
+		#endif
+
+	}
+
+	writeReg(LORARegIrqFlags, 0xFF);
+   
+
+    return 0;
+}
+
 
 uint8_t cadlora (){ 
 
@@ -992,7 +1071,7 @@ uint8_t cadlora (){
 
 		configCAD();
 
-		if(clear_bit){
+		if(clear_bit || LMIC.sysname_use_fixed_difs){
 			// if RSSI is declared clear, do an extra CSMA with CAD
 			for(u2_t ind = 0;ind < LMIC.sysname_cad_difs;ind++){
 				// clear all radio IRQ flags
@@ -1014,6 +1093,8 @@ uint8_t cadlora (){
 		        }
 	        }
 		}
+
+		writeReg(LORARegIrqFlags, 0xFF);
 
         if(!clear_bit){
         	cur_backoff = os_getRndU1() % LMIC.sysname_backoff_cfg2 + 1;
@@ -1167,7 +1248,11 @@ static void txlora () {
 	if(LMIC.sysname_enable_cad){
 		LMIC.freq = LMIC.sysname_cad_freq_vec[LMIC.sysname_enable_cad-1];
 		LMIC.rps = LMIC.sysname_cad_rps;
-    	cadlora();
+		if(LMIC.sysname_csma_algo){
+			lmaccadlora();
+		} else {
+    		cadlora();
+    	}
     	LMIC.freq = LMIC.sysname_cad_freq_vec[0];
 	} else{
 		LMIC.sysname_cad_counter = 0;

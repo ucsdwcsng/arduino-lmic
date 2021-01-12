@@ -551,6 +551,9 @@ struct lmic_t {
     u1_t        sysname_backoff_cfg2;
     u1_t        sysname_kill_cad_delay;
 
+    u1_t        sysname_use_fixed_difs;
+    u1_t        sysname_csma_algo;
+
     u4_t        sysname_cad_freq_vec[4];
 
     rps_t       sysname_cad_rps;

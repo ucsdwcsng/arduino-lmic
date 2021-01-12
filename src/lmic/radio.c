@@ -818,6 +818,22 @@ void configrevCAD () {
     
     // Configure SF
     configLoraModem();
+
+    // Configure the stuff that Tx Usually configures
+
+    // set sync word
+    writeReg(LORARegSyncWord, LORA_MAC_PREAMBLE);
+
+    // set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP
+    writeReg(RegDioMapping1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
+
+	// initialize the payload size and address pointers
+    writeReg(LORARegFifoTxBaseAddr, 0x00);
+    writeReg(LORARegFifoAddrPtr, 0x00);
+    writeReg(LORARegPayloadLength, LMIC.dataLen);
+
+    // PaRamp
+    writeReg(RegPaRamp, (readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
 }
 
 void configall_fast(){
@@ -852,16 +868,18 @@ uint8_t revcadlora (){
 			// clear all radio IRQ flags
 			writeReg(LORARegIrqFlags, 0xFF);
 			// set radio to CAD mode.
-			opmode(OPMODE_CAD);
+			// opmode(OPMODE_CAD);
+			writeReg(RegOpMode, OPMODE_CAD);
+
 			u1_t flags = 0;
 			while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
 			flags = readReg(LORARegIrqFlags);
 			}
 
 			if (flags & IRQ_LORA_CDDETD_MASK) {
-			#if LMIC_DEBUG_LEVEL > 0
-				LMIC_DEBUG_PRINTF("REV CAD SENSED!");
-			#endif
+				// #if LMIC_DEBUG_LEVEL > 0
+				// 	LMIC_DEBUG_PRINTF("REV CAD SENSED!");
+				// #endif
 				clear_bit++;
 			}
 
@@ -877,7 +895,7 @@ uint8_t revcadlora (){
 		}
 
 		#if LMIC_DEBUG_LEVEL > 0
-			LMIC_DEBUG_PRINTF("Clear Bit= %d, LMIC.sysname_btone_difs=%d\n",clear_bit,LMIC.sysname_btone_difs);
+			LMIC_DEBUG_PRINTF("REVCAD:%"LMIC_PRId_ostime_t"\n",os_getTime());
 		#endif
 
 	}
@@ -922,9 +940,6 @@ void configCAD () {
     
     // Configure SF
     configLoraModem();
-
-    // Reset CAD Counter
-    LMIC.sysname_cad_counter = 0;
 }
 
 
@@ -943,6 +958,11 @@ uint8_t cadlora (){
     // 3. Max backoff multiplier -> LMIC.sysname_backoff_cfg2
     // 4. Exponential Backoff?
 
+    // Reset CAD Counter
+    LMIC.sysname_cad_counter = 0;
+    // Reset LBT Counter
+    LMIC.sysname_lbt_counter = 0;
+
     #if LMIC_DEBUG_LEVEL > 0
         LMIC_DEBUG_PRINTF("DOING CAD");
 	#endif
@@ -958,6 +978,7 @@ uint8_t cadlora (){
 		if (LMIC.lbt_ticks > 0) {
 	        oslmic_radio_rssi_t rssi;
 	        radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
+	        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 	            #if LMIC_DEBUG_LEVEL > 0
 			        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
@@ -982,7 +1003,7 @@ uint8_t cadlora (){
 		        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
 		            flags = readReg(LORARegIrqFlags);
 		        }
-		        // Incremend CAD Counter
+		        // Increment CAD Counter
 		        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
 
 		        if (flags & IRQ_LORA_CDDETD_MASK) {
@@ -1008,6 +1029,7 @@ uint8_t cadlora (){
 }
 #endif
 
+#if SYSNAME_TX_BTONE == 1
 static void txlora () {
 // Enable Reverse CSMA for busytone purpose
 #if SYSNAME_TX_BTONE == 1
@@ -1016,6 +1038,12 @@ static void txlora () {
 		LMIC.rps = LMIC.sysname_btone_rx_rps;
 		revcadlora();
 		LMIC.freq = LMIC.sysname_btone_tx_freq;
+
+		u1_t const rOpMode = readReg(RegOpMode);
+	    if ((rOpMode & OPMODE_MASK) != OPMODE_SLEEP) {
+	        opmode(OPMODE_SLEEP);
+	        // hal_waitUntil(os_getTime() + ms2osticks(1));
+	    }
 	}
 #endif
 // enable CSMA only if level is above 0
@@ -1032,10 +1060,17 @@ static void txlora () {
 	LMIC.rps = LMIC.sysname_tx_rps;
 
     // select LoRa modem (from sleep mode)
-    //writeReg(RegOpMode, OPMODE_LORA);
-
+#if SYSNAME_TX_BTONE == 0
     opmodeLora();
     ASSERT((readReg(RegOpMode) & OPMODE_LORA) != 0);
+#elif SYSNAME_TX_BTONE == 1
+    // Burn through asap
+    // writeReg(RegOpMode, OPMODE_LORA);
+    opmodeLora();
+    configChannel();
+#endif
+
+
 #if SYSNAME_TX_BTONE == 0
     // enter standby mode (required for FIFO loading))
     opmode(OPMODE_STANDBY);
@@ -1044,7 +1079,7 @@ static void txlora () {
     // configure frequency
     configChannel();
     // configure output power
-#endif
+
 
 #ifdef CFG_sx1272_radio
     writeReg(RegPaRamp, (readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
@@ -1052,28 +1087,34 @@ static void txlora () {
     writeReg(RegPaRamp, 0x08);     // set PA ramp-up time 50 uSec, clear FSK bits
 #endif
 
+#endif
+
 #if SYSNAME_TX_BTONE == 0
     configPower();
-#endif
+
     // set sync word
     writeReg(LORARegSyncWord, LORA_MAC_PREAMBLE);
 
     // set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP
     writeReg(RegDioMapping1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
+
+#endif
+
     // clear all radio IRQ flags
     writeReg(LORARegIrqFlags, 0xFF);
     // mask all IRQs but TxDone
     writeReg(LORARegIrqFlagsMask, ~IRQ_LORA_TXDONE_MASK);
 
+#if SYSNAME_TX_BTONE == 0
     // initialize the payload size and address pointers
     writeReg(LORARegFifoTxBaseAddr, 0x00);
     writeReg(LORARegFifoAddrPtr, 0x00);
     writeReg(LORARegPayloadLength, LMIC.dataLen);
+#endif
 
 #if SYSNAME_TX_BTONE == 0
     // download buffer to the radio FIFO
     writeBuf(RegFifo, LMIC.frame, LMIC.dataLen);
-#endif
     // enable antenna switch for TX
     hal_pin_rxtx(1);
 
@@ -1085,8 +1126,19 @@ static void txlora () {
             ++LMIC.radio.txlate_count;
         }
     }
+
     LMICOS_logEventUint32("+Tx LoRa", LMIC.dataLen);
-    opmode(OPMODE_TX);
+#endif
+
+#if SYSNAME_TX_BTONE == 0
+	opmode(OPMODE_TX);
+#elif SYSNAME_TX_BTONE == 1
+    // Burn through asap
+    writeReg(RegOpMode, OPMODE_TX);
+#endif
+
+    
+#if SYSNAME_TX_BTONE==0
 
 #if LMIC_DEBUG_LEVEL > 0
     u1_t sf = getSf(LMIC.rps) + 6; // 1 == SF7
@@ -1099,7 +1151,102 @@ static void txlora () {
            getIh(LMIC.rps)
    );
 #endif
+
+#elif SYSNAME_TX_BTONE == 1
+    	#if LMIC_DEBUG_LEVEL > 0
+			LMIC_DEBUG_PRINTF("TXSTART:%"LMIC_PRId_ostime_t"\n",os_getTime());
+		#endif
+#endif
 }
+
+#elif SYSNAME_TX_BTONE == 0
+
+static void txlora () {
+// enable CSMA only if level is above 0
+#if LMIC_CSMA_LEVEL > 0
+	if(LMIC.sysname_enable_cad){
+		LMIC.freq = LMIC.sysname_cad_freq_vec[LMIC.sysname_enable_cad-1];
+		LMIC.rps = LMIC.sysname_cad_rps;
+    	cadlora();
+    	LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+	} else{
+		LMIC.sysname_cad_counter = 0;
+		LMIC.sysname_lbt_counter = 0;
+	}
+#endif
+	LMIC.rps = LMIC.sysname_tx_rps;
+
+    // select LoRa modem (from sleep mode)
+    opmodeLora();
+    ASSERT((readReg(RegOpMode) & OPMODE_LORA) != 0);
+
+    // enter standby mode (required for FIFO loading))
+    opmode(OPMODE_STANDBY);
+    // configure LoRa modem (cfg1, cfg2)
+    configLoraModem();
+    // configure frequency
+    configChannel();
+    // configure output power
+
+#ifdef CFG_sx1272_radio
+    writeReg(RegPaRamp, (readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
+#elif defined(CFG_sx1276_radio)
+    writeReg(RegPaRamp, 0x08);     // set PA ramp-up time 50 uSec, clear FSK bits
+#endif
+
+    configPower();
+
+    // set sync word
+    writeReg(LORARegSyncWord, LORA_MAC_PREAMBLE);
+
+    // set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP
+    writeReg(RegDioMapping1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
+
+    // clear all radio IRQ flags
+    writeReg(LORARegIrqFlags, 0xFF);
+    // mask all IRQs but TxDone
+    writeReg(LORARegIrqFlagsMask, ~IRQ_LORA_TXDONE_MASK);
+
+    // initialize the payload size and address pointers
+    writeReg(LORARegFifoTxBaseAddr, 0x00);
+    writeReg(LORARegFifoAddrPtr, 0x00);
+    writeReg(LORARegPayloadLength, LMIC.dataLen);
+
+    // download buffer to the radio FIFO
+    writeBuf(RegFifo, LMIC.frame, LMIC.dataLen);
+    // enable antenna switch for TX
+    hal_pin_rxtx(1);
+
+    // now we actually start the transmission
+    if (LMIC.txend) {
+        u4_t nLate = hal_waitUntil(LMIC.txend); // busy wait until exact tx time
+        if (nLate) {
+            LMIC.radio.txlate_ticks += nLate;
+            ++LMIC.radio.txlate_count;
+        }
+    }
+
+    LMICOS_logEventUint32("+Tx LoRa", LMIC.dataLen);
+
+	opmode(OPMODE_TX);
+
+#if LMIC_DEBUG_LEVEL > 0
+    u1_t sf = getSf(LMIC.rps) + 6; // 1 == SF7
+    u1_t bw = getBw(LMIC.rps);
+    u1_t cr = getCr(LMIC.rps);
+    LMIC_DEBUG_PRINTF("%"LMIC_PRId_ostime_t": TXMODE, freq=%"PRIu32", len=%d, SF=%d, BW=%d, CR=4/%d, IH=%d\n",
+           os_getTime(), LMIC.freq, LMIC.dataLen, sf,
+           bw == BW125 ? 125 : (bw == BW250 ? 250 : 500),
+           cr == CR_4_5 ? 5 : (cr == CR_4_6 ? 6 : (cr == CR_4_7 ? 7 : 8)),
+           getIh(LMIC.rps)
+   );
+#endif
+
+
+}
+
+
+#endif
 
 // start transmitter (buf=LMIC.frame, len=LMIC.dataLen)
 static void starttx () {

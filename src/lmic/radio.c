@@ -976,6 +976,7 @@ uint8_t lmaccadlora (){
 		    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
 		        // Channel is not free
 		        clear_bit = 0;
+		        continue;
 		    }
 		}
 
@@ -1001,9 +1002,10 @@ uint8_t lmaccadlora (){
 
 		        if (flags & IRQ_LORA_CDDETD_MASK) {
 		        	#if LMIC_DEBUG_LEVEL > 0
-		        		LMIC_DEBUG_PRINTF("CAD SENSED!");
+		        		LMIC_DEBUG_PRINTF("CAD SENSED!\n");
 		        	#endif
 		            clear_bit=0;
+		            break;
 		        }
 	        }
 		}
@@ -1815,6 +1817,13 @@ void radio_irq_handler_v2 (u1_t dio, ostime_t now) {
             else if (rssi > -100) {
                 // correct nonlinearity -- this is the same as multiplying rRssi * 16/15 initially.
                 rssi += (rRssi / 15);
+            }
+
+            // SYSNAME: Getting CRC Status:
+            if( flags & IRQ_LORA_CRCERR_MASK){
+            	LMIC.sysname_crc_err = 1;
+            } else {
+            	LMIC.sysname_crc_err = 0;
             }
 
             LMIC_X_DEBUG_PRINTF("RX snr=%u rssi=%d\n", LMIC.snr/4, rssi);

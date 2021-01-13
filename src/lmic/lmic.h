@@ -559,6 +559,7 @@ struct lmic_t {
     rps_t       sysname_cad_rps;
 #endif
     rps_t       sysname_tx_rps;
+    u1_t        sysname_crc_err;
 
 #if SYSNAME_TX_BTONE == 1
     u4_t sysname_btone_rx_freq;

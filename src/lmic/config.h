@@ -75,7 +75,7 @@
 // communicating with the radio.
 // The standard range is 125kHz-8MHz, but some boards can go faster.
 #ifndef LMIC_SPI_FREQ
-#define LMIC_SPI_FREQ 1E6
+#define LMIC_SPI_FREQ 5E6
 #endif
 
 // Set this to 1 to enable some basic debug output (using printf) about

@@ -545,6 +545,7 @@ struct lmic_t {
 // 3. Max backoff multiplier -> LMIC.sysname_backoff_cfg2
     bit_t       sysname_enable_cad;
     u4_t        sysname_cad_counter;
+    u4_t        sysname_cad_detect_counter;
     u4_t        sysname_lbt_counter;
     u1_t        sysname_cad_difs;
     u1_t        sysname_backoff_cfg1;

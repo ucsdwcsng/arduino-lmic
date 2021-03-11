@@ -946,6 +946,7 @@ uint8_t lmaccadlora (){
 
     // Reset CAD Counter
     LMIC.sysname_cad_counter = 0;
+    LMIC.sysname_cad_detect_counter = 0;
     // Reset LBT Counter
     LMIC.sysname_lbt_counter = 0;
 
@@ -959,63 +960,127 @@ uint8_t lmaccadlora (){
     // Number of DIFS to Count-down
     cur_backoff = os_getRndU1() % LMIC.sysname_backoff_cfg2 + 1; 
 
-	while(cur_backoff>0){
+    u2_t state_now = 1;
 
-		// Implement HAL Backoff
-		clear_bit = 1;
+    while(cur_backoff>0){
 
-		if (LMIC.lbt_ticks > 0) {
-	        oslmic_radio_rssi_t rssi;
-	        radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
-	        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+    switch(state_now){
 
-	            #if LMIC_DEBUG_LEVEL > 0
-			        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
-				#endif
+    	case 1:
+    		// DIFS STATE
+    		clear_bit = 1;
 
-		    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
-		        // Channel is not free
-		        clear_bit = 0;
-		        continue;
+    		// PERFORM RSSI SENSING IF NECESSARY
+	    	if (LMIC.lbt_ticks > 0) {
+		        oslmic_radio_rssi_t rssi;
+		        radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
+		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+
+		            #if LMIC_DEBUG_LEVEL > 0
+				        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+					#endif
+
+			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+			        // Channel is not free
+			        clear_bit = 0;
+			    }
+			}
+
+			configCAD();
+
+			#if LMIC_DEBUG_LEVEL > 0
+				LMIC_DEBUG_PRINTF("FIXED DIFS:? %d\n",LMIC.sysname_use_fixed_difs);
+			#endif
+
+			// PERFORM CAD
+			if(clear_bit || LMIC.sysname_use_fixed_difs){
+				// if RSSI is declared clear, do an extra CSMA with CAD
+				for(u2_t ind = 0;ind < LMIC.sysname_cad_difs;ind++){
+					// clear all radio IRQ flags
+			        writeReg(LORARegIrqFlags, 0xFF);
+			        // set radio to CAD mode.
+			        opmode(OPMODE_CAD);
+			        u1_t flags = 0;
+			        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+			            flags = readReg(LORARegIrqFlags);
+			        }
+			        // Increment CAD Counter
+			        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+			        if (flags & IRQ_LORA_CDDETD_MASK) {
+			        	#if LMIC_DEBUG_LEVEL > 0
+			        		LMIC_DEBUG_PRINTF("CAD SENSED!\n");
+			        	#endif
+			            clear_bit=0;
+			            LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+			            break;
+			        }
+		        }
 		    }
-		}
 
-		configCAD();
+		    if(clear_bit)
+		    	state_now = 2; // BO STATE
+		    else
+		    	state_now = 1;
 
-		#if LMIC_DEBUG_LEVEL > 0
-			LMIC_DEBUG_PRINTF("FIXED DIFS:? %d\n",LMIC.sysname_use_fixed_difs);
-		#endif
+    	break;
 
-		if(clear_bit || LMIC.sysname_use_fixed_difs){
-			// if RSSI is declared clear, do an extra CSMA with CAD
-			for(u2_t ind = 0;ind < LMIC.sysname_cad_difs;ind++){
-				// clear all radio IRQ flags
-		        writeReg(LORARegIrqFlags, 0xFF);
-		        // set radio to CAD mode.
-		        opmode(OPMODE_CAD);
-		        u1_t flags = 0;
-		        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
-		            flags = readReg(LORARegIrqFlags);
-		        }
-		        // Increment CAD Counter
-		        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+    	case 2:
+    	// BO STATE - COUNTS DOWN PER CAD
 
-		        if (flags & IRQ_LORA_CDDETD_MASK) {
-		        	#if LMIC_DEBUG_LEVEL > 0
-		        		LMIC_DEBUG_PRINTF("CAD SENSED!\n");
-		        	#endif
-		            clear_bit=0;
-		            break;
-		        }
+    		clear_bit = 1;
+
+			// PERFORM RSSI SENSING IF NECESSARY
+	    	if (LMIC.lbt_ticks > 0) {
+		        oslmic_radio_rssi_t rssi;
+		        radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
+		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+
+		            #if LMIC_DEBUG_LEVEL > 0
+				        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+					#endif
+
+			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+			        // Channel is not free
+			        clear_bit = 0;
+			    }
+			}
+
+			// Perform CAD
+			configCAD();
+
+			writeReg(LORARegIrqFlags, 0xFF);
+	        // set radio to CAD mode.
+	        opmode(OPMODE_CAD);
+	        u1_t flags = 0;
+	        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+	            flags = readReg(LORARegIrqFlags);
 	        }
-		}
-		cur_backoff = cur_backoff-clear_bit;
+	        // Increment CAD Counter
+	        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
 
-		#if LMIC_DEBUG_LEVEL > 0
-			LMIC_DEBUG_PRINTF("Clear Bit= %d, LMIC.sysname_cad_difs=%d\n",clear_bit,LMIC.sysname_cad_difs);
-		#endif
+	        if (flags & IRQ_LORA_CDDETD_MASK) {
+	        	#if LMIC_DEBUG_LEVEL > 0
+	        		LMIC_DEBUG_PRINTF("CAD SENSED!\n");
+	        	#endif
+	            clear_bit=0;
+	            LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+	            break;
+	        }
 
-	}
+			if(clear_bit){
+		    	state_now = 2; // BO STATE
+		    	cur_backoff = cur_backoff - 1;
+			}
+		    else
+		    	state_now = 1;  // Channel Sensed, go to DIFS state
+    	break;
+
+    	default:
+    		state_now = 1; // DIFS STATE
+    }
+
+    }
 
 	writeReg(LORARegIrqFlags, 0xFF);
    
@@ -1041,6 +1106,7 @@ uint8_t cadlora (){
 
     // Reset CAD Counter
     LMIC.sysname_cad_counter = 0;
+    LMIC.sysname_cad_detect_counter = 0;
     // Reset LBT Counter
     LMIC.sysname_lbt_counter = 0;
 
@@ -1091,6 +1157,7 @@ uint8_t cadlora (){
 		        	#if LMIC_DEBUG_LEVEL > 0
 		        		LMIC_DEBUG_PRINTF("CAD SENSED!");
 		        	#endif
+		        	LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
 		            clear_bit=0;
 		        }
 	        }

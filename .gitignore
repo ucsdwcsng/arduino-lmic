@@ -46,3 +46,7 @@ __vm
 
 # files from vscode
 .vscode
+
+# other files
+*DS_Store
+*.swp

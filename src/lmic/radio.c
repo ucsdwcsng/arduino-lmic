@@ -1177,6 +1177,90 @@ uint8_t cadlora (){
 	}
     return 0;
 }
+
+uint8_t cadlora_fixedDIFS(){ 
+// Similar to cadlora
+// CHANGES: added a return clearbit and removed while(1) and backoffs
+// GOAL: Returns channel status: 1 - free, 0 - busy
+// VARIABLES REQUIRED: 
+// 1. DIFS Length in number of CADs -> LMIC.sysname_cad_difs
+// 2. DIFS strictly fixed LMIC.sysname_use_fixed_difs: 0 - no contraintz, 1 - fixed
+
+    // Reset CAD Counter
+    LMIC.sysname_cad_counter = 0;
+    LMIC.sysname_cad_detect_counter = 0;
+    // Reset LBT Counter
+    LMIC.sysname_lbt_counter = 0;
+
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("DOING CAD\n");
+    #endif
+
+    u2_t cur_backoff = 0;
+    uint8_t clear_bit = 0;
+
+    // Implement HAL Backoff
+    clear_bit = 1;
+
+    if (LMIC.lbt_ticks > 0) {
+        oslmic_radio_rssi_t rssi;
+        radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
+        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+        #endif
+
+        if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+            // Channel is not free
+            clear_bit = 0;
+        }
+    }
+
+    configCAD();
+
+    if(clear_bit  || LMIC.sysname_use_fixed_difs){
+        // if RSSI is declared clear, do an extra CSMA with CAD
+        for(u2_t ind = 0;ind < LMIC.sysname_cad_difs;ind++){
+            // clear all radio IRQ flags
+            writeReg(LORARegIrqFlags, 0xFF);
+            // set radio to CAD mode.
+            opmode(OPMODE_CAD);
+            u1_t flags = 0;
+            while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+                flags = readReg(LORARegIrqFlags);
+            }
+            // Increment CAD Counter
+            LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+            if (flags & IRQ_LORA_CDDETD_MASK) {
+                #if LMIC_DEBUG_LEVEL > 0
+                    LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!! !\n");
+                #endif
+                LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+                clear_bit=0;
+
+                if (LMIC.sysname_use_fixed_difs == 0) {
+                    break; // if channel is busy
+                }
+            } else {
+                #if LMIC_DEBUG_LEVEL > 0
+                    LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
+                #endif
+                clear_bit=1;
+            } 
+        }
+    }
+
+    writeReg(LORARegIrqFlags, 0xFF);
+
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("Clear Bit= %d, LMIC.sysname_cad_difs=%d\n",clear_bit,LMIC.sysname_cad_difs);
+    #endif
+    
+    return clear_bit;
+}
+
 #endif
 
 #if SYSNAME_TX_BTONE == 1

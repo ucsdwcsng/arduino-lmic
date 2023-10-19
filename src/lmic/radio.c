@@ -1184,7 +1184,7 @@ uint8_t cadlora_fixedDIFS(){
 // GOAL: Returns channel status: 1 - free, 0 - busy
 // VARIABLES REQUIRED: 
 // 1. DIFS Length in number of CADs -> LMIC.sysname_cad_difs
-// 2. DIFS strictly fixed LMIC.sysname_use_fixed_difs: 0 - no contraintz, 1 - fixed
+// 2. DIFS strictly fixed LMIC.sysname_use_fixed_difs: 0 - no contraint, 1 - fixed
 
     // Reset CAD Counter
     LMIC.sysname_cad_counter = 0;

@@ -1466,6 +1466,15 @@ static void txlora () {
 
     LMICOS_logEventUint32("+Tx LoRa", LMIC.dataLen);
 
+#if SYSNAME_FSMA_LEVEL == 1
+    if (LMIC.sysname_enable_tx_interrupt) {
+        // Raise interrupt
+        osjob_t interrupt_job;
+        os_setTimedCallback(&interrupt_job, os_getTime() + ms2osticks(6), interrupt_func);
+    }
+#endif
+
+    // Transmit
 	opmode(OPMODE_TX);
 
 #if LMIC_DEBUG_LEVEL > 0
@@ -1483,6 +1492,13 @@ static void txlora () {
 
 }
 
+#if SYSNAME_FSMA_LEVEL == 1
+static void interrupt_func(osjob_t *job) {
+    radio_init();
+    os_radio(RADIO_RST);
+    delay(200);
+    os_setCallback(job, txlora);
+}
 
 #endif
 

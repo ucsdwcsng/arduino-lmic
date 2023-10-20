@@ -562,6 +562,12 @@ struct lmic_t {
     rps_t       sysname_tx_rps;
     u1_t        sysname_crc_err;
 
+#if SYSNAME_FSMA_LEVEL == 1
+    u1_t        sysname_enable_tx_interrupt; // raise interrupt after tx
+    u1_t        sysname_interrupt_trigger_us; // trigger interrupt after x us
+    u1_t        sysname_interrupt_sleep_ms; // after interrupt sleep for x ms
+#endif
+
 #if SYSNAME_TX_BTONE == 1
     u4_t sysname_btone_rx_freq;
     rps_t sysname_btone_rx_rps;

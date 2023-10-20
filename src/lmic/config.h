@@ -215,5 +215,6 @@
 // LMIC CAD from LORAMAC
 # define LMIC_CSMA_LEVEL 1
 # define SYSNAME_TX_BTONE 0
+# define SYSNAME_FSMA_LEVEL 1
 
 #endif // _lmic_config_h_

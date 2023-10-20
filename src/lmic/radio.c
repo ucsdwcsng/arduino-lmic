@@ -1470,7 +1470,7 @@ static void txlora () {
     if (LMIC.sysname_enable_tx_interrupt) {
         // Raise interrupt
         osjob_t interrupt_job;
-        os_setTimedCallback(&interrupt_job, os_getTime() + ms2osticks(6), interrupt_func);
+        os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(LMIC.sysname_interrupt_trigger_us), interrupt_func);
     }
 #endif
 
@@ -1496,9 +1496,10 @@ static void txlora () {
 static void interrupt_func(osjob_t *job) {
     radio_init();
     os_radio(RADIO_RST);
-    delay(200);
+    delay(LMIC.sysname_interrupt_sleep_ms);
     os_setCallback(job, txlora);
 }
+#endif
 
 #endif
 

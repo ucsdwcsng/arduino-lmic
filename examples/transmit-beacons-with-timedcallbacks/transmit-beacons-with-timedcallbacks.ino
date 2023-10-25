@@ -32,7 +32,7 @@ void tx(osjobcb_t func) {
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
-  delay(10);
+  delay(1);
   // prepare data
   LMIC.dataLen = 0;
   //LMIC.frame[0] = 'H';
@@ -42,7 +42,7 @@ void tx(osjobcb_t func) {
   // start the transmission
   Serial.println("Setting timed callback and transmitting..");
 
-  os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*1), interrupt_func);
+  os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*2), interrupt_func);
 
   os_radio(RADIO_TX);
 //  os_setCallback(&sleep_job, sleep);
@@ -59,7 +59,7 @@ static void interrupt_func(osjob_t *job) {
   // Serial.println("Radio RX is done ...");
   // writeReg(RegOpMode,OPMODE_SLEEP);
 
-  delay(500);
+  delay(200);
   //LMIC_sendAlive();
   os_setCallback(job, tx_func);
   //intialize();

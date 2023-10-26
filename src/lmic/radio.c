@@ -1215,6 +1215,8 @@ uint8_t cadlora_fixedDIFS(){
             // Channel is not free
             clear_bit = 0;
         }
+        LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
+        LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
     }
 
     configCAD();

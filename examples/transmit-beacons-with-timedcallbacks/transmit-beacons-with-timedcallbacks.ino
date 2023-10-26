@@ -32,48 +32,32 @@ void tx(osjobcb_t func) {
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
-  delay(1);
+  delay(0.5);
+
   // prepare data
   LMIC.dataLen = 0;
   //LMIC.frame[0] = 'H';
   //LMIC.frame[1] = 'i';
   // set completion function.
   LMIC.osjob.func = func;
+  
   // start the transmission
   Serial.println("Setting timed callback and transmitting..");
-
-  os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*2), interrupt_func);
-
+  // os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*7), interrupt_func);
+  os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
   os_radio(RADIO_TX);
-//  os_setCallback(&sleep_job, sleep);
+  //  os_setCallback(&sleep_job, sleep);
 }
 
 static void interrupt_func(osjob_t *job) {
-//  Serial.println("Inside interrupt fn ...");
-  // LMIC_reset();
-  // os_radio(RADIO_RST);
+  //  Serial.println("Inside interrupt fn ...");
   radio_init();
   os_radio(RADIO_RST);
   Serial.println("Radio RESET is done ...");
-  // os_radio(RADIO_RX);
-  // Serial.println("Radio RX is done ...");
-  // writeReg(RegOpMode,OPMODE_SLEEP);
 
-  delay(200);
-  //LMIC_sendAlive();
+  // delay(200);
   os_setCallback(job, tx_func);
-  //intialize();
 }
-
-//static void cad_func(osjob_t *job) {
-//  Serial.println("Inside CAD fn ...");
-//  u1_t channel_status;
-//  channel_status = cadlora_fixedDIFS()
-//  Serial.print("CAD done, status: ");
-//  Serial.println(channel_status);
-//  delay(50);
-//  os_setCallback(job, cad_func);
-//}
 
 static void tx_func(osjob_t *job) {
   // Send BUF OUT
@@ -108,6 +92,9 @@ static void intialize() {
   LMIC.sysname_cad_freq_vec[1] = 920000000 - 1000000;
   LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;
   LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
+
+  // FSMA
+  LMIC.sysname_tx_with_free_beacons = 0;
 
   Serial.flush();
   // Say Hi

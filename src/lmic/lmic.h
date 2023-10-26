@@ -563,9 +563,7 @@ struct lmic_t {
     u1_t        sysname_crc_err;
 
 #if SYSNAME_FSMA_LEVEL == 1
-    u1_t        sysname_enable_tx_interrupt; // raise interrupt after tx
-    u1_t        sysname_interrupt_trigger_us; // trigger interrupt after x us
-    u1_t        sysname_interrupt_sleep_ms; // after interrupt sleep for x ms
+    u1_t        sysname_tx_with_free_beacons; // transmit only if node receives free beacons
 #endif
 
 #if SYSNAME_TX_BTONE == 1

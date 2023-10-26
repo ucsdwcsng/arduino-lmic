@@ -1396,6 +1396,11 @@ static void txlora () {
 #elif SYSNAME_TX_BTONE == 0
 
 static void txlora () {
+#if LMIC_DEBUG_LEVEL > 0
+    LMIC_DEBUG_PRINTF("Starting txlora at %"LMIC_PRId_ostime_t"\n", os_getTime());
+    LMIC_DEBUG_PRINTF("CAD status: %d\n", LMIC.sysname_enable_cad);
+#endif
+
 // enable CSMA only if level is above 0
 #if LMIC_CSMA_LEVEL > 0
 	if(LMIC.sysname_enable_cad){
@@ -1407,9 +1412,6 @@ static void txlora () {
     		cadlora();
     	}
     	LMIC.freq = LMIC.sysname_cad_freq_vec[0];
-	} else{
-		LMIC.sysname_cad_counter = 0;
-		LMIC.sysname_lbt_counter = 0;
 	}
 #endif
 	LMIC.rps = LMIC.sysname_tx_rps;
@@ -1466,14 +1468,6 @@ static void txlora () {
 
     LMICOS_logEventUint32("+Tx LoRa", LMIC.dataLen);
 
-#if SYSNAME_FSMA_LEVEL == 1
-    if (LMIC.sysname_enable_tx_interrupt) {
-        // Raise interrupt
-        osjob_t interrupt_job;
-        os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(LMIC.sysname_interrupt_trigger_us), interrupt_func);
-    }
-#endif
-
     // Transmit
 	opmode(OPMODE_TX);
 
@@ -1491,15 +1485,6 @@ static void txlora () {
 
 
 }
-
-#if SYSNAME_FSMA_LEVEL == 1
-static void interrupt_func(osjob_t *job) {
-    radio_init();
-    os_radio(RADIO_RST);
-    delay(LMIC.sysname_interrupt_sleep_ms);
-    os_setCallback(job, txlora);
-}
-#endif
 
 #endif
 
@@ -1539,7 +1524,34 @@ static void starttx () {
     if(getSf(LMIC.rps) == FSK) { // FSK modem
         txfsk();
     } else { // LoRa modem
+        LMIC.sysname_cad_counter = 0;
+		LMIC.sysname_lbt_counter = 0;
+
+// FSMA enabled
+#if SYSNAME_FSMA_LEVEL == 1
+        // requires LMIC variables for custom CAD
+        LMIC.sysname_cad_difs = 1; // Check if random cad diff improve the overall performance
+        LMIC.sysname_use_fixed_difs = 1;
+        LMIC.sysname_enable_cad = 0;
+
+        uint8_t isChannelFree;
+        isChannelFree = cadlora_fixedDIFS();
+
+        // For Gateway:  channel should be free (== 1) and  tx with beacon disabled (== 0)
+        // For Node: channel should be busy (== 0) and  tx with beacon enabled (== 1)
+        bit_t tx_condition = (isChannelFree == 1) ^ (LMIC.sysname_tx_with_free_beacons == 1); // (XOR operation)
+        if (tx_condition) {
+            txlora();
+        } else {
+            hal_waitUntil(os_getTime() + ms2osticks(10)); // Check if random wait times improve the performance
+        }
+
+// FSMA disabled
+#elif SYSNAME_FSMA_LEVEL != 1
         txlora();
+
+#endif
+
     }
     // the radio will go back to STANDBY mode as soon as the TX is finished
     // the corresponding IRQ will inform us about completion.

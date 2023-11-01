@@ -912,7 +912,7 @@ void configCAD () {
     if(!LMIC.sysname_kill_cad_delay){
 
     #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("CAD DELAY");
+        LMIC_DEBUG_PRINTF("CAD DELAY\n");
 	#endif
     // manually reset radio
 #ifdef CFG_sx1276_radio
@@ -922,7 +922,7 @@ void configCAD () {
 #endif
     hal_waitUntil(os_getTime()+ms2osticks(1)); // wait >100us
     hal_pin_rst(2); // configure RST pin as floating
-    hal_waitUntil(os_getTime()+ms2osticks(5)); // wait 5ms
+    hal_waitUntil(os_getTime()+ms2osticks(1)); // wait 5ms => WCSNG changed to 1ms
 	}
 
     // mask all IRQ bits except CAD completed & detected
@@ -1178,13 +1178,17 @@ uint8_t cadlora (){
     return 0;
 }
 
-uint8_t cadlora_fixedDIFS(){ 
+uint8_t fsmacadlora(){ 
 // Similar to cadlora
-// CHANGES: added a return clearbit and removed while(1) and backoffs
-// GOAL: Returns channel status: 1 - free, 0 - busy
+// Runs on loop until it gets a clear to transmit status
+// if not clear, apply exponential backoff and sleep
+// unlike cadlora uses vairable CAD DIFS
+
 // VARIABLES REQUIRED: 
-// 1. DIFS Length in number of CADs -> LMIC.sysname_cad_difs
-// 2. DIFS strictly fixed LMIC.sysname_use_fixed_difs: 0 - no contraint, 1 - fixed
+// 1. LMIC.lbt_ticks
+// 2. DIFS Length in number of CADs -> LMIC.sysname_cad_difs
+// 3. Max backoff multiplier -> LMIC.sysname_backoff_cfg2
+// 4. Exponential Backoff?
 
     // Reset CAD Counter
     LMIC.sysname_cad_counter = 0;
@@ -1193,74 +1197,102 @@ uint8_t cadlora_fixedDIFS(){
     LMIC.sysname_lbt_counter = 0;
 
     #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("DOING CAD\n");
+        LMIC_DEBUG_PRINTF("Doing FSMA based CAD ...\n");
     #endif
 
     u2_t cur_backoff = 0;
+    u2_t exponent_count = 0;
+    u2_t exponent_backoff_multiplier = 0;
+    u2_t variable_CAD_DIFS_multiplier = 1;
+    u2_t max_CAD_DIFS_multiplier = 10;
     uint8_t clear_bit = 0;
+    uint8_t tx_condition = 0;
 
-    // Implement HAL Backoff
-    clear_bit = 1;
+    while (!tx_condition) {
+        // Implement HAL Backoff
+        clear_bit = 1;
 
-    if (LMIC.lbt_ticks > 0) {
-        oslmic_radio_rssi_t rssi;
-        radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
-        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+        if ((LMIC.lbt_ticks > 0) && (!LMIC.sysname_is_FSMA_node)) {
+            oslmic_radio_rssi_t rssi;
+            radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
+            LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+            #endif
+
+            if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+                // Channel is not free
+                clear_bit = 0;
+            }
+            LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
+            LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
+        }
+
+        configCAD();
+
+        if(clear_bit  || LMIC.sysname_is_FSMA_node){
+            // if RSSI is declared clear, do an extra CSMA with CAD
+
+            // if variable CAD enabled, CAD DIFS can be randomly from 1 to 10
+            if (LMIC.sysname_enable_variable_cad_difs) {
+                variable_CAD_DIFS_multiplier = os_getRndU1() % max_CAD_DIFS_multiplier + 1;
+            } 
+
+            for(u2_t ind = 0; ind < (variable_CAD_DIFS_multiplier*LMIC.sysname_cad_difs); ind++){
+                // clear all radio IRQ flags
+                writeReg(LORARegIrqFlags, 0xFF);
+                // set radio to CAD mode
+                opmode(OPMODE_CAD);
+                u1_t flags = 0;
+                while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+                    flags = readReg(LORARegIrqFlags);
+                }
+                // Increment CAD Counter
+                LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+                if (flags & IRQ_LORA_CDDETD_MASK) {
+                    #if LMIC_DEBUG_LEVEL > 0
+                        LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!! !\n");
+                    #endif
+                    LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+                    clear_bit=0;
+
+                    if (LMIC.sysname_use_fixed_difs == 0) {
+                        break; // if channel is busy
+                    }
+                } else {
+                    #if LMIC_DEBUG_LEVEL > 0
+                        LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
+                    #endif
+                    clear_bit=1;
+                } 
+            }
+        }
+
+        writeReg(LORARegIrqFlags, 0xFF);
+
+        // For Gateway:  channel should be free (== 1) and  tx with beacon disabled (== 0)
+        // For Node: channel should be busy (== 0) and  tx with beacon enabled (== 1)
+        tx_condition = (clear_bit == 1) ^ (LMIC.sysname_is_FSMA_node == 1); // (XOR operation)
+
+        // if transmit condition not met and it is a FSMA node - apply backoff
+        if(!tx_condition && LMIC.sysname_is_FSMA_node){
+            if (LMIC.sysname_enable_exponential_backoff) {
+                exponent_count =  exponent_count + 1;
+            }
+            exponent_backoff_multiplier = (exponent_count+1)*LMIC.sysname_backoff_cfg2;
+            cur_backoff = os_getRndU1() % exponent_backoff_multiplier + 1;
+            hal_waitUntil(os_getTime() + ms2osticks(cur_backoff*LMIC.sysname_backoff_cfg1));
+        }
 
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+            LMIC_DEBUG_PRINTF("Tx condition: %d ...\n",tx_condition);
+            LMIC_DEBUG_PRINTF("Exponential backoff: status=%d, multiplier=%d\n",LMIC.sysname_enable_exponential_backoff, exponent_backoff_multiplier);
+            LMIC_DEBUG_PRINTF("Variable CAD DIFS: status=%d, multiplier=%d\n",LMIC.sysname_enable_variable_cad_difs, variable_CAD_DIFS_multiplier);
         #endif
-
-        if (rssi.max_rssi >= LMIC.lbt_dbmax) {
-            // Channel is not free
-            clear_bit = 0;
-        }
-        LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
-        LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
     }
-
-    configCAD();
-
-    if(clear_bit  || LMIC.sysname_use_fixed_difs){
-        // if RSSI is declared clear, do an extra CSMA with CAD
-        for(u2_t ind = 0;ind < LMIC.sysname_cad_difs;ind++){
-            // clear all radio IRQ flags
-            writeReg(LORARegIrqFlags, 0xFF);
-            // set radio to CAD mode.
-            opmode(OPMODE_CAD);
-            u1_t flags = 0;
-            while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
-                flags = readReg(LORARegIrqFlags);
-            }
-            // Increment CAD Counter
-            LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
-
-            if (flags & IRQ_LORA_CDDETD_MASK) {
-                #if LMIC_DEBUG_LEVEL > 0
-                    LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!! !\n");
-                #endif
-                LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
-                clear_bit=0;
-
-                if (LMIC.sysname_use_fixed_difs == 0) {
-                    break; // if channel is busy
-                }
-            } else {
-                #if LMIC_DEBUG_LEVEL > 0
-                    LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
-                #endif
-                clear_bit=1;
-            } 
-        }
-    }
-
-    writeReg(LORARegIrqFlags, 0xFF);
-
-    #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("Clear Bit= %d, LMIC.sysname_cad_difs=%d\n",clear_bit,LMIC.sysname_cad_difs);
-    #endif
-    
-    return clear_bit;
+    return tx_condition;
 }
 
 #endif
@@ -1406,14 +1438,19 @@ static void txlora () {
 // enable CSMA only if level is above 0
 #if LMIC_CSMA_LEVEL > 0
 	if(LMIC.sysname_enable_cad){
-		LMIC.freq = LMIC.sysname_cad_freq_vec[LMIC.sysname_enable_cad-1];
+		// LMIC.freq = LMIC.sysname_cad_freq_vec[LMIC.sysname_enable_cad-1];
 		LMIC.rps = LMIC.sysname_cad_rps;
 		if(LMIC.sysname_csma_algo){
 			lmaccadlora();
+		} else if (LMIC.sysname_enable_FSMA){
+            fsmacadlora();
 		} else {
     		cadlora();
     	}
-    	LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+    	// LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+	} else{
+		LMIC.sysname_cad_counter = 0;
+		LMIC.sysname_lbt_counter = 0;
 	}
 #endif
 	LMIC.rps = LMIC.sysname_tx_rps;
@@ -1526,34 +1563,7 @@ static void starttx () {
     if(getSf(LMIC.rps) == FSK) { // FSK modem
         txfsk();
     } else { // LoRa modem
-        LMIC.sysname_cad_counter = 0;
-		LMIC.sysname_lbt_counter = 0;
-
-// FSMA enabled
-#if SYSNAME_FSMA_LEVEL == 1
-        // requires LMIC variables for custom CAD
-        LMIC.sysname_cad_difs = 1; // Check if random cad diff improve the overall performance
-        LMIC.sysname_use_fixed_difs = 1;
-        LMIC.sysname_enable_cad = 0;
-
-        uint8_t isChannelFree;
-        isChannelFree = cadlora_fixedDIFS();
-
-        // For Gateway:  channel should be free (== 1) and  tx with beacon disabled (== 0)
-        // For Node: channel should be busy (== 0) and  tx with beacon enabled (== 1)
-        bit_t tx_condition = (isChannelFree == 1) ^ (LMIC.sysname_tx_with_free_beacons == 1); // (XOR operation)
-        if (tx_condition) {
-            txlora();
-        } else {
-            hal_waitUntil(os_getTime() + ms2osticks(10)); // Check if random wait times improve the performance
-        }
-
-// FSMA disabled
-#elif SYSNAME_FSMA_LEVEL != 1
         txlora();
-
-#endif
-
     }
     // the radio will go back to STANDBY mode as soon as the TX is finished
     // the corresponding IRQ will inform us about completion.
@@ -1768,7 +1778,7 @@ int radio_init () {
 #endif
     hal_waitUntil(os_getTime()+ms2osticks(1)); // wait >100us
     hal_pin_rst(2); // configure RST pin floating!
-    hal_waitUntil(os_getTime()+ms2osticks(5)); // wait 5ms
+    hal_waitUntil(os_getTime()+ms2osticks(1)); // wait 5ms => WCSNG changed to 1ms
 
     opmode(OPMODE_SLEEP);
 
@@ -1889,16 +1899,12 @@ void radio_monitor_rssi(ostime_t nTicks, oslmic_radio_rssi_t *pRssi) {
     rssiSum = 0;
     rssiN = 0;
 
-
-
-
     // wait for PLLs
     hal_waitUntil(os_getTime() + SX127X_RX_POWER_UP);
 
     // scan for the desired time.
     tBegin = os_getTime();
     rssiMax = 0;
-
 
     /* Per bug report from tanupoo, it's critical that interrupts be enabled
      * in the loop below so that `os_getTime()` always advances.

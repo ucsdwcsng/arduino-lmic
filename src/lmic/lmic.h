@@ -563,9 +563,12 @@ struct lmic_t {
     u1_t        sysname_crc_err;
 
 #if SYSNAME_FSMA_LEVEL == 1
-    u1_t        sysname_tx_with_free_beacons; // transmit only if node receives free beacons
+    u1_t        sysname_enable_FSMA;
+    u1_t        sysname_is_FSMA_node; // transmit only if node receives free beacons
     s2_t        sysname_lbt_rssi_mean;
     s2_t        sysname_lbt_rssi_max;
+    u1_t        sysname_enable_exponential_backoff;
+    u1_t        sysname_enable_variable_cad_difs;
 #endif
 
 #if SYSNAME_TX_BTONE == 1

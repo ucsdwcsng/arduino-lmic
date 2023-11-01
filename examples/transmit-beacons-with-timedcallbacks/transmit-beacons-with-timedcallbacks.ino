@@ -26,13 +26,13 @@ void os_getDevKey(u1_t *buf) {}
 osjob_t arbiter_job;
 osjob_t interrupt_job;
 osjob_t sleep_job;
-
+int32_t interrupt_timer = us2osticks(7000 + 2048*2);
 
 void tx(osjobcb_t func) {
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
-  delay(0.5);
+  delay(1);
 
   // prepare data
   LMIC.dataLen = 0;
@@ -40,11 +40,13 @@ void tx(osjobcb_t func) {
   //LMIC.frame[1] = 'i';
   // set completion function.
   LMIC.osjob.func = func;
-  
+
   // start the transmission
   Serial.println("Setting timed callback and transmitting..");
   // os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*7), interrupt_func);
-  os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
+  // os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
+  os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer , interrupt_func);  // FSMA
+
   os_radio(RADIO_TX);
   //  os_setCallback(&sleep_job, sleep);
 }
@@ -55,9 +57,9 @@ static void interrupt_func(osjob_t *job) {
   os_radio(RADIO_RST);
   Serial.println("Radio RESET is done ...");
 
-  // delay(200);
+  // delay(1000);
   os_setCallback(job, tx_func);
-}
+  }
 
 static void tx_func(osjob_t *job) {
   // Send BUF OUT
@@ -94,7 +96,18 @@ static void intialize() {
   LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
 
   // FSMA
-  LMIC.sysname_tx_with_free_beacons = 0;
+  LMIC.sysname_enable_cad = 1; //FSMA is sub category of CAD
+  LMIC.sysname_kill_cad_delay = 1;
+  LMIC.sysname_enable_FSMA = 1;
+  LMIC.sysname_is_FSMA_node = 0;
+  LMIC.sysname_enable_exponential_backoff = 0;
+  LMIC.sysname_enable_variable_cad_difs = 0;
+
+  LMIC.lbt_ticks = 0;
+  LMIC.sysname_cad_difs = 1;
+  // LMIC.sysname_backoff_cfg1 = 12;
+  // LMIC.sysname_backoff_cfg2 = 64;
+
 
   Serial.flush();
   // Say Hi

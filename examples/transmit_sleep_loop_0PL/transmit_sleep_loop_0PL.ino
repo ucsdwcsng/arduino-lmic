@@ -58,13 +58,14 @@ void tx(osjobcb_t func) {
   LMIC.osjob.func = func;
 
   // start the transmission
-  Serial.println("Setting timed callback and transmitting..");
+  // Serial.println("Setting timed callback and transmitting..");
   // os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*7), interrupt_func);
   // os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
-  os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
+  // os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
 
   os_radio(RADIO_TX);
-  //  os_setCallback(&sleep_job, sleep);
+  Serial.println("Transmit done ..");
+  os_setCallback(&sleep_job, sleep);
 }
 
 static void interrupt_func(osjob_t *job) {

@@ -44,7 +44,12 @@
 
 // This is the SX1272/SX1273 radio, which is also used on the HopeRF
 // RFM92 boards.
+// #define CFG_sx1272_radio 1
+#if  (defined(ADAFRUIT_FEATHER_M0))
+#define CFG_sx1276_radio 1
+#else
 #define CFG_sx1272_radio 1
+#endif 
 // This is the SX1276/SX1277/SX1278/SX1279 radio, which is also used on
 // the HopeRF RFM95 boards.
 //#define CFG_sx1276_radio 1

@@ -7,6 +7,19 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#define ADAFRUIT_FEATHER_M0 1
+
+#if defined(ADAFRUIT_FEATHER_M0)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+const lmic_pinmap lmic_pins = {
+  .nss = 8,
+  .rxtx = LMIC_UNUSED_PIN,
+  .rst = 4,
+  .dio = { 3, 6, LMIC_UNUSED_PIN },
+  .rxtx_rx_active = 0,
+  .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
+  .spi_freq = 8000000,
+};
+#else
 // Pin mapping
 const lmic_pinmap lmic_pins = {
   .nss = D10,
@@ -14,6 +27,7 @@ const lmic_pinmap lmic_pins = {
   .rst = A0,
   .dio = { 2, 3, 4 },
 };
+#endif
 
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
@@ -26,7 +40,7 @@ void os_getDevKey(u1_t *buf) {}
 osjob_t arbiter_job;
 osjob_t interrupt_job;
 osjob_t sleep_job;
-int32_t interrupt_timer = us2osticks(7000 + 2048*2);
+int32_t interrupt_timer = us2osticks(7000 + 2048 * 2);
 
 void tx(osjobcb_t func) {
   // the radio is probably in RX mode; stop it.
@@ -45,7 +59,7 @@ void tx(osjobcb_t func) {
   Serial.println("Setting timed callback and transmitting..");
   // os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*7), interrupt_func);
   // os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
-  os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer , interrupt_func);  // FSMA
+  os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
 
   os_radio(RADIO_TX);
   //  os_setCallback(&sleep_job, sleep);
@@ -59,7 +73,7 @@ static void interrupt_func(osjob_t *job) {
 
   // delay(1000);
   os_setCallback(job, tx_func);
-  }
+}
 
 static void tx_func(osjob_t *job) {
   // Send BUF OUT

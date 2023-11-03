@@ -99,14 +99,14 @@ static void intialize() {
   //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_tx_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);              // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);   // WCSNG
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);              // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);   // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21;  // WCSNG
 
   // Set the LMIC CAD Frequencies
-  LMIC.freq = 922000000;  // WCSNG
+  LMIC.freq = 920000000;  // WCSNG
   LMIC.sysname_cad_freq_vec[0] = 920000000;
   LMIC.sysname_cad_freq_vec[1] = 920000000 - 1000000;
   LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;

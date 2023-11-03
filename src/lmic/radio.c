@@ -1178,6 +1178,64 @@ uint8_t cadlora (){
     return 0;
 }
 
+u1_t cadlora_fixedDIFS (void) {
+
+    uint8_t clear_bit = 1;
+
+        if ((LMIC.lbt_ticks > 0) && (!LMIC.sysname_is_FSMA_node)) {
+            oslmic_radio_rssi_t rssi;
+            radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
+            LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
+
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+            #endif
+
+            if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+                // Channel is not free
+                clear_bit = 0;
+            }
+            LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
+            LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
+        }
+
+        configCAD();
+
+        if(clear_bit  || LMIC.sysname_is_FSMA_node){
+            // if RSSI is declared clear, do an extra CSMA with CAD
+
+            for(u2_t ind = 0; ind < LMIC.sysname_cad_difs; ind++){
+                // clear all radio IRQ flags
+                writeReg(LORARegIrqFlags, 0xFF);
+                // set radio to CAD mode
+                opmode(OPMODE_CAD);
+                u1_t flags = 0;
+                while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+                    flags = readReg(LORARegIrqFlags);
+                }
+                // Increment CAD Counter
+                LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+                if (flags & IRQ_LORA_CDDETD_MASK) {
+                    #if LMIC_DEBUG_LEVEL > 0
+                        LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!! !\n");
+                    #endif
+                    LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+                    clear_bit=0;
+
+                    if (LMIC.sysname_use_fixed_difs == 0) {
+                        break; // if channel is busy
+                    }
+                } else {
+                    #if LMIC_DEBUG_LEVEL > 0
+                        LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
+                    #endif
+                    clear_bit=1;
+                } 
+            }
+        }
+}
+
 uint8_t fsmacadlora(){ 
 // Similar to cadlora
 // Runs on loop until it gets a clear to transmit status
@@ -1209,67 +1267,13 @@ uint8_t fsmacadlora(){
     uint8_t tx_condition = 0;
 
     while (!tx_condition) {
-        // Implement HAL Backoff
-        clear_bit = 1;
+        
+        // // if variable CAD enabled, CAD DIFS can be randomly from 1 to 10
+        // if (LMIC.sysname_enable_variable_cad_difs) {
+        //     variable_CAD_DIFS_multiplier = os_getRndU1() % max_CAD_DIFS_multiplier + 1;
+        // } 
 
-        if ((LMIC.lbt_ticks > 0) && (!LMIC.sysname_is_FSMA_node)) {
-            oslmic_radio_rssi_t rssi;
-            radio_monitor_rssi(LMIC.lbt_ticks, &rssi);
-            LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
-
-            #if LMIC_DEBUG_LEVEL > 0
-                LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
-            #endif
-
-            if (rssi.max_rssi >= LMIC.lbt_dbmax) {
-                // Channel is not free
-                clear_bit = 0;
-            }
-            LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
-            LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
-        }
-
-        configCAD();
-
-        if(clear_bit  || LMIC.sysname_is_FSMA_node){
-            // if RSSI is declared clear, do an extra CSMA with CAD
-
-            // if variable CAD enabled, CAD DIFS can be randomly from 1 to 10
-            if (LMIC.sysname_enable_variable_cad_difs) {
-                variable_CAD_DIFS_multiplier = os_getRndU1() % max_CAD_DIFS_multiplier + 1;
-            } 
-
-            for(u2_t ind = 0; ind < (variable_CAD_DIFS_multiplier*LMIC.sysname_cad_difs); ind++){
-                // clear all radio IRQ flags
-                writeReg(LORARegIrqFlags, 0xFF);
-                // set radio to CAD mode
-                opmode(OPMODE_CAD);
-                u1_t flags = 0;
-                while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
-                    flags = readReg(LORARegIrqFlags);
-                }
-                // Increment CAD Counter
-                LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
-
-                if (flags & IRQ_LORA_CDDETD_MASK) {
-                    #if LMIC_DEBUG_LEVEL > 0
-                        LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!! !\n");
-                    #endif
-                    LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
-                    clear_bit=0;
-
-                    if (LMIC.sysname_use_fixed_difs == 0) {
-                        break; // if channel is busy
-                    }
-                } else {
-                    #if LMIC_DEBUG_LEVEL > 0
-                        LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
-                    #endif
-                    clear_bit=1;
-                } 
-            }
-        }
-
+        clear_bit = cadlora_fixedDIFS();
         writeReg(LORARegIrqFlags, 0xFF);
 
         // For Gateway:  channel should be free (== 1) and  tx with beacon disabled (== 0)

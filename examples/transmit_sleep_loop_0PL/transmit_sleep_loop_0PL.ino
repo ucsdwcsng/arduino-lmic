@@ -106,7 +106,7 @@ static void intialize() {
   LMIC.radio_txpow = 21;  // WCSNG
 
   // Set the LMIC CAD Frequencies
-  LMIC.freq = 920000000;  // WCSNG
+  LMIC.freq = 922000000;  // WCSNG
   LMIC.sysname_cad_freq_vec[0] = 920000000;
   LMIC.sysname_cad_freq_vec[1] = 920000000 - 1000000;
   LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;

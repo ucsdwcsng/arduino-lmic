@@ -1180,6 +1180,7 @@ uint8_t cadlora (){
 
 u1_t cadlora_fixedDIFS (void) {
 
+    // intializing clear bit - gives channel status
     uint8_t clear_bit = 1;
 
         if ((LMIC.lbt_ticks > 0) && (!LMIC.sysname_is_FSMA_node)) {
@@ -1234,6 +1235,8 @@ u1_t cadlora_fixedDIFS (void) {
                 } 
             }
         }
+
+    return clear_bit;
 }
 
 uint8_t fsmacadlora(){ 

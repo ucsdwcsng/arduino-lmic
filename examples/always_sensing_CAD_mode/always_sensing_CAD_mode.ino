@@ -95,8 +95,8 @@ static void intialize() {
   LMIC.sysname_enable_variable_cad_difs = 0;
 
   LMIC.lbt_ticks = 8;
-  LMIC.sysname_cad_difs = 1;
-  LMIC.lbt_dbmax = -90;
+  LMIC.sysname_cad_difs = 2;
+  LMIC.sysname_lbt_dbmin = -115;
   // LMIC.sysname_backoff_cfg1 = 12;
   // LMIC.sysname_backoff_cfg2 = 64;
 

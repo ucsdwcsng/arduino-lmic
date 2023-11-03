@@ -99,18 +99,18 @@ static void intialize() {
   //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_tx_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);              // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);   // WCSNG
-  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);              // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);   // WCSNG
+  LMIC.sysname_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21;  // WCSNG
 
   // Set the LMIC CAD Frequencies
   LMIC.freq = 922000000;  // WCSNG
-  LMIC.sysname_cad_freq_vec[0] = 920000000;
-  LMIC.sysname_cad_freq_vec[1] = 920000000 - 1000000;
-  LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;
-  LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
+  LMIC.sysname_cad_freq_vec[0] = 920000000; // reverse for gateway
+  LMIC.sysname_cad_freq_vec[1] = 922000000;// reverse for gateway
+  // LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;
+  // LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
 
   // FSMA
   LMIC.sysname_enable_cad = 1; //FSMA is sub category of CAD
@@ -121,10 +121,10 @@ static void intialize() {
   LMIC.sysname_enable_variable_cad_difs = 0;
 
   LMIC.lbt_ticks = 0;
-  LMIC.sysname_cad_difs = 1;
+  LMIC.sysname_cad_difs = 2;
+  LMIC.sysname_lbt_dbmin = -115;
   // LMIC.sysname_backoff_cfg1 = 12;
   // LMIC.sysname_backoff_cfg2 = 64;
-
 
   Serial.flush();
   // Say Hi

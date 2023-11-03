@@ -46,7 +46,7 @@
 // RFM92 boards.
 // #define CFG_sx1272_radio 1
 #ifndef ADAFRUIT_FEATHER_M0
-#define ADAFRUIT_FEATHER_M0 1
+#define ADAFRUIT_FEATHER_M0 0
 #endif
 
 #if (ADAFRUIT_FEATHER_M0 == 1)

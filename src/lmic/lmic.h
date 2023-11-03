@@ -561,6 +561,7 @@ struct lmic_t {
 #endif
     rps_t       sysname_tx_rps;
     u1_t        sysname_crc_err;
+    s1_t        sysname_lbt_dbmin;
 
 #if SYSNAME_FSMA_LEVEL == 1
     u1_t        sysname_enable_FSMA;

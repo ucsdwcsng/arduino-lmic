@@ -977,7 +977,7 @@ uint8_t lmaccadlora (){
 		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 		            #if LMIC_DEBUG_LEVEL > 0
-				        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+				        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
 					#endif
 
 			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1037,7 +1037,7 @@ uint8_t lmaccadlora (){
 		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 		            #if LMIC_DEBUG_LEVEL > 0
-				        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+				        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
 					#endif
 
 			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1128,7 +1128,7 @@ uint8_t cadlora (){
 	        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 	            #if LMIC_DEBUG_LEVEL > 0
-			        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+			        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
 				#endif
 
 		    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1181,8 +1181,8 @@ uint8_t cadlora (){
 u1_t cadlora_fixedDIFS (void) {
 
     // intializing clear bit - gives channel status
-    uint8_t clear_bit_LBT = 1;
-    uint8_t clear_bit_CAD = 1;
+    uint8_t clear_bit_LBT = 1; // clear_bit from Listen Before Talk
+    uint8_t clear_bit_CAD = 1; // clear_bit from CAD
 
     // --- doing LBT ----
     if (LMIC.lbt_ticks < 1) {
@@ -1197,8 +1197,7 @@ u1_t cadlora_fixedDIFS (void) {
     #endif
 
     if (rssi.max_rssi >= LMIC.sysname_lbt_dbmin) {
-        // Channel is not free
-        clear_bit_LBT = 0;
+        clear_bit_LBT = 1;
     }
 
     LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
@@ -1221,7 +1220,7 @@ u1_t cadlora_fixedDIFS (void) {
 
         if (flags & IRQ_LORA_CDDETD_MASK) {
             #if LMIC_DEBUG_LEVEL > 0
-                LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!! !\n");
+                LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!!!\n");
             #endif
             LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
             clear_bit_CAD = 0;
@@ -1236,8 +1235,11 @@ u1_t cadlora_fixedDIFS (void) {
         }
     }
 
-    // channel is busy only if CAD detected and min energy exist in channel, else free.
-    return ((clear_bit_LBT == 1) || (clear_bit_CAD == 1));
+    // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, clear_bit_LBT:%d\n", clear_bit_CAD, clear_bit_LBT);
+    #endif
+    return ((clear_bit_CAD == 1) || (clear_bit_LBT == 0)) ;
 }
 
 uint8_t fsmacadlora(){ 
@@ -1280,9 +1282,12 @@ uint8_t fsmacadlora(){
         clear_bit = cadlora_fixedDIFS();
         writeReg(LORARegIrqFlags, 0xFF);
 
-        // For Gateway:  channel should be free (== 1) and  tx with beacon disabled (== 0)
-        // For Node: channel should be busy (== 0) and  tx with beacon enabled (== 1)
+        // For Gateway:  channel should be free (== 1) and  is not a node (== 0)
+        // For Node: channel should be busy (== 0) and is node (== 1)
         tx_condition = (clear_bit == 1) ^ (LMIC.sysname_is_FSMA_node == 1); // (XOR operation)
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("clear_bit: %d, is node: %d\n", clear_bit, LMIC.sysname_is_FSMA_node);
+        #endif
 
         // if transmit condition not met and it is a FSMA node - apply backoff
         if(!tx_condition && LMIC.sysname_is_FSMA_node){
@@ -1295,7 +1300,7 @@ uint8_t fsmacadlora(){
         }
 
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("Tx condition: %d ...\n",tx_condition);
+            LMIC_DEBUG_PRINTF("Tx condition: %d\n",tx_condition);
             LMIC_DEBUG_PRINTF("Exponential backoff: status=%d, multiplier=%d\n",LMIC.sysname_enable_exponential_backoff, exponent_backoff_multiplier);
             LMIC_DEBUG_PRINTF("Variable CAD DIFS: status=%d, multiplier=%d\n",LMIC.sysname_enable_variable_cad_difs, variable_CAD_DIFS_multiplier);
         #endif
@@ -1446,13 +1451,15 @@ static void txlora () {
 // enable CSMA only if level is above 0
 #if LMIC_CSMA_LEVEL > 0
 	if(LMIC.sysname_enable_cad){
-		LMIC.freq = LMIC.sysname_cad_freq_vec[1];
 		LMIC.rps = LMIC.sysname_cad_rps;
 		if(LMIC.sysname_csma_algo){
+            LMIC.freq = LMIC.sysname_cad_freq_vec[0];
 			lmaccadlora();
 		} else if (LMIC.sysname_enable_FSMA){
+            LMIC.freq = LMIC.sysname_cad_freq_vec[1];
             fsmacadlora();
 		} else {
+            LMIC.freq = LMIC.sysname_cad_freq_vec[0];
     		cadlora();
     	}
         LMIC.freq = LMIC.sysname_cad_freq_vec[0];

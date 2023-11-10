@@ -977,7 +977,7 @@ uint8_t lmaccadlora (){
 		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 		            #if LMIC_DEBUG_LEVEL > 0
-				        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+				        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
 					#endif
 
 			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1037,7 +1037,7 @@ uint8_t lmaccadlora (){
 		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 		            #if LMIC_DEBUG_LEVEL > 0
-				        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+				        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
 					#endif
 
 			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1128,7 +1128,7 @@ uint8_t cadlora (){
 	        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 	            #if LMIC_DEBUG_LEVEL > 0
-			        LMIC_DEBUG_PRINTF("RSSI: %d",rssi.max_rssi );
+			        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
 				#endif
 
 		    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1451,13 +1451,15 @@ static void txlora () {
 // enable CSMA only if level is above 0
 #if LMIC_CSMA_LEVEL > 0
 	if(LMIC.sysname_enable_cad){
-		LMIC.freq = LMIC.sysname_cad_freq_vec[1];
 		LMIC.rps = LMIC.sysname_cad_rps;
 		if(LMIC.sysname_csma_algo){
+            LMIC.freq = LMIC.sysname_cad_freq_vec[0];
 			lmaccadlora();
 		} else if (LMIC.sysname_enable_FSMA){
+            LMIC.freq = LMIC.sysname_cad_freq_vec[1];
             fsmacadlora();
 		} else {
+            LMIC.freq = LMIC.sysname_cad_freq_vec[0];
     		cadlora();
     	}
         LMIC.freq = LMIC.sysname_cad_freq_vec[0];

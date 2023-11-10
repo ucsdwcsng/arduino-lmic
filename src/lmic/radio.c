@@ -1181,9 +1181,8 @@ uint8_t cadlora (){
 u1_t cadlora_fixedDIFS (void) {
 
     // intializing clear bit - gives channel status
-    uint8_t detected_min_energy = 0; // min energy to avoid false positives
-    uint8_t detected_max_energy = 0; // max energy to detect as threshold
-    uint8_t clear_bit_CAD = 1;
+    uint8_t clear_bit_LBT = 1; // clear_bit from Listen Before Talk
+    uint8_t clear_bit_CAD = 1; // clear_bit from CAD
 
     // --- doing LBT ----
     if (LMIC.lbt_ticks < 1) {
@@ -1197,12 +1196,8 @@ u1_t cadlora_fixedDIFS (void) {
         LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
     #endif
 
-    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
-        detected_max_energy = 1;
-    }
-
     if (rssi.max_rssi >= LMIC.sysname_lbt_dbmin) {
-        detected_min_energy = 1;
+        clear_bit_LBT = 1;
     }
 
     LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
@@ -1242,9 +1237,9 @@ u1_t cadlora_fixedDIFS (void) {
 
     // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
     #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, detected_max_energy:%d , detected_min_energy: %d\n", clear_bit_CAD, detected_max_energy, detected_min_energy);
+        LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, clear_bit_LBT:%d\n", clear_bit_CAD, clear_bit_LBT);
     #endif
-    return ((detected_max_energy == 0) && (clear_bit_CAD == 1) || (detected_min_energy == 0)) ;
+    return ((clear_bit_CAD == 1) || (clear_bit_LBT == 0)) ;
 }
 
 uint8_t fsmacadlora(){ 

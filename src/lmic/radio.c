@@ -1240,7 +1240,7 @@ u1_t cadlora_fixedDIFS (void) {
     #if LMIC_DEBUG_LEVEL > 0
         LMIC_DEBUG_PRINTF("clear_bit_LBT: %d, clear_bit_CAD: %d\n",clear_bit_LBT, clear_bit_CAD);
     #endif
-    return ((clear_bit_LBT == 1) && (clear_bit_CAD == 1));
+    return ((clear_bit_LBT == 1) || (clear_bit_CAD == 1));
 }
 
 uint8_t fsmacadlora(){ 
@@ -1283,9 +1283,12 @@ uint8_t fsmacadlora(){
         clear_bit = cadlora_fixedDIFS();
         writeReg(LORARegIrqFlags, 0xFF);
 
-        // For Gateway:  channel should be free (== 1) and  tx with beacon disabled (== 0)
-        // For Node: channel should be busy (== 0) and  tx with beacon enabled (== 1)
+        // For Gateway:  channel should be free (== 1) and  is not a node (== 0)
+        // For Node: channel should be busy (== 0) and is node (== 1)
         tx_condition = (clear_bit == 1) ^ (LMIC.sysname_is_FSMA_node == 1); // (XOR operation)
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("clear_bit: %d, is node: %d, tx_condition: \n", clear_bit, LMIC.sysname_is_FSMA_node, tx_condition);
+        #endif
 
         // if transmit condition not met and it is a FSMA node - apply backoff
         if(!tx_condition && LMIC.sysname_is_FSMA_node){

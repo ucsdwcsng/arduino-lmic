@@ -7,7 +7,24 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#if defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#define ADAFRUIT_FEATHER_M0 2
+
+// Pin mapping Adafruit feather RP2040
+#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 2))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+const lmic_pinmap lmic_pins = {
+  .nss = 16,
+  .rxtx = LMIC_UNUSED_PIN,
+  .rst = 17,
+  .dio = { 21, 6, LMIC_UNUSED_PIN },
+  .rxtx_rx_active = 0,
+  .rssi_cal = 8,
+  .spi_freq = 8000000,
+};
+
+int32_t interrupt_timer = us2osticks(3000 + 2048*2);
+
+// Pin mapping Adafruit feather M0
+#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 8,
   .rxtx = LMIC_UNUSED_PIN,
@@ -102,14 +119,14 @@ static void intialize() {
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);              // WCSNG
   LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);   // WCSNG
-  LMIC.sysname_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
+  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21;  // WCSNG
 
   // Set the LMIC CAD Frequencies
-  LMIC.freq = 922000000;  // WCSNG
-  LMIC.sysname_cad_freq_vec[0] = 920000000; // reverse for gateway
-  LMIC.sysname_cad_freq_vec[1] = 922000000;// reverse for gateway
+  LMIC.freq = 920000000;  // WCSNG
+  LMIC.sysname_cad_freq_vec[0] = 918000000; // reverse for gateway
+  LMIC.sysname_cad_freq_vec[1] = 920000000;// reverse for gateway
 
   // LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;
   // LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;

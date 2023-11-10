@@ -107,10 +107,9 @@ static void intialize() {
   LMIC.radio_txpow = 21;  // WCSNG
 
   // Set the LMIC CAD Frequencies
-  LMIC.freq = 922000000;  // WCSNG
-  LMIC.sysname_cad_freq_vec[0] = 920000000; // reverse for gateway
-  LMIC.sysname_cad_freq_vec[1] = 922000000;// reverse for gateway
-
+  LMIC.freq = 918000000;  // WCSNG
+  LMIC.sysname_cad_freq_vec[0] = 918000000; // reverse for gateway
+  LMIC.sysname_cad_freq_vec[1] = 920000000;// reverse for gateway
   // LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;
   // LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
 

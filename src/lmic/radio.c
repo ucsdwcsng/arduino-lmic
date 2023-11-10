@@ -1237,7 +1237,10 @@ u1_t cadlora_fixedDIFS (void) {
     }
 
     // channel is busy only if CAD detected and min energy exist in channel, else free.
-    return ((clear_bit_LBT == 1) || (clear_bit_CAD == 1));
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("clear_bit_LBT: %d, clear_bit_CAD: %d\n",clear_bit_LBT, clear_bit_CAD);
+    #endif
+    return ((clear_bit_LBT == 1) && (clear_bit_CAD == 1));
 }
 
 uint8_t fsmacadlora(){ 

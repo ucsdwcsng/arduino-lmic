@@ -1181,7 +1181,8 @@ uint8_t cadlora (){
 u1_t cadlora_fixedDIFS (void) {
 
     // intializing clear bit - gives channel status
-    uint8_t clear_bit_LBT = 1;
+    uint8_t detected_min_energy = 0; // min energy to avoid false positives
+    uint8_t detected_max_energy = 0; // max energy to detect as threshold
     uint8_t clear_bit_CAD = 1;
 
     // --- doing LBT ----
@@ -1196,9 +1197,12 @@ u1_t cadlora_fixedDIFS (void) {
         LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
     #endif
 
+    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+        detected_max_energy = 1;
+    }
+
     if (rssi.max_rssi >= LMIC.sysname_lbt_dbmin) {
-        // Channel is not free
-        clear_bit_LBT = 0;
+        detected_min_energy = 1;
     }
 
     LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
@@ -1221,7 +1225,7 @@ u1_t cadlora_fixedDIFS (void) {
 
         if (flags & IRQ_LORA_CDDETD_MASK) {
             #if LMIC_DEBUG_LEVEL > 0
-                LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!! !\n");
+                LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!!!\n");
             #endif
             LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
             clear_bit_CAD = 0;
@@ -1236,11 +1240,11 @@ u1_t cadlora_fixedDIFS (void) {
         }
     }
 
-    // channel is busy only if CAD detected and min energy exist in channel, else free.
+    // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
     #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("clear_bit_LBT: %d, clear_bit_CAD: %d\n",clear_bit_LBT, clear_bit_CAD);
+        LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, detected_max_energy:%d , detected_min_energy: %d\n", clear_bit_CAD, detected_max_energy, detected_min_energy);
     #endif
-    return ((clear_bit_LBT == 1) || (clear_bit_CAD == 1));
+    return ((detected_max_energy == 0) && (clear_bit_CAD == 1) || (detected_min_energy == 0)) ;
 }
 
 uint8_t fsmacadlora(){ 
@@ -1287,7 +1291,7 @@ uint8_t fsmacadlora(){
         // For Node: channel should be busy (== 0) and is node (== 1)
         tx_condition = (clear_bit == 1) ^ (LMIC.sysname_is_FSMA_node == 1); // (XOR operation)
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("clear_bit: %d, is node: %d, tx_condition: \n", clear_bit, LMIC.sysname_is_FSMA_node, tx_condition);
+            LMIC_DEBUG_PRINTF("clear_bit: %d, is node: %d\n", clear_bit, LMIC.sysname_is_FSMA_node);
         #endif
 
         // if transmit condition not met and it is a FSMA node - apply backoff
@@ -1301,7 +1305,7 @@ uint8_t fsmacadlora(){
         }
 
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("Tx condition: %d ...\n",tx_condition);
+            LMIC_DEBUG_PRINTF("Tx condition: %d\n",tx_condition);
             LMIC_DEBUG_PRINTF("Exponential backoff: status=%d, multiplier=%d\n",LMIC.sysname_enable_exponential_backoff, exponent_backoff_multiplier);
             LMIC_DEBUG_PRINTF("Variable CAD DIFS: status=%d, multiplier=%d\n",LMIC.sysname_enable_variable_cad_difs, variable_CAD_DIFS_multiplier);
         #endif

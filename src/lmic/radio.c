@@ -1181,8 +1181,10 @@ uint8_t cadlora (){
 u1_t cadlora_fixedDIFS (void) {
 
     // intializing clear bit - gives channel status
-    uint8_t clear_bit_LBT = 1; // clear_bit from Listen Before Talk
+    uint8_t detected_min_energy = 0; // min energy to avoid false positives
+    uint8_t detected_max_energy = 0; // max energy to detect as threshold
     uint8_t clear_bit_CAD = 1; // clear_bit from CAD
+    uint8_t clear_status = 0;
 
     // --- doing LBT ----
     if (LMIC.lbt_ticks < 1) {
@@ -1197,41 +1199,47 @@ u1_t cadlora_fixedDIFS (void) {
     #endif
 
     if (rssi.max_rssi >= LMIC.sysname_lbt_dbmin) {
-        clear_bit_LBT = 1;
+        detected_min_energy = 1;
+    }
+
+    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
+        detected_max_energy = 1;
     }
 
     LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
     LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
 
-    // --- doing CAD ----
     configCAD();
 
-    for(u2_t ind = 0; ind < LMIC.sysname_cad_difs; ind++){
-        // clear all radio IRQ flags
-        writeReg(LORARegIrqFlags, 0xFF);
-        // set radio to CAD mode
-        opmode(OPMODE_CAD);
-        u1_t flags = 0;
-        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
-            flags = readReg(LORARegIrqFlags);
-        }
-        // Increment CAD Counter
-        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
-
-        if (flags & IRQ_LORA_CDDETD_MASK) {
-            #if LMIC_DEBUG_LEVEL > 0
-                LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!!!\n");
-            #endif
-            LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
-            clear_bit_CAD = 0;
-            if (LMIC.sysname_use_fixed_difs == 0) {
-                break; // if channel is busy
+    if ((detected_max_energy == 0) || (LMIC.sysname_is_FSMA_node == 1)) {
+    // --- doing CAD ----
+        for(u2_t ind = 0; ind < LMIC.sysname_cad_difs; ind++){
+            // clear all radio IRQ flags
+            writeReg(LORARegIrqFlags, 0xFF);
+            // set radio to CAD mode
+            opmode(OPMODE_CAD);
+            u1_t flags = 0;
+            while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+                flags = readReg(LORARegIrqFlags);
             }
-        } else {
-            #if LMIC_DEBUG_LEVEL > 0
-                LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
-            #endif
-            clear_bit_CAD = 1;
+            // Increment CAD Counter
+            LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+            if (flags & IRQ_LORA_CDDETD_MASK) {
+                #if LMIC_DEBUG_LEVEL > 0
+                    LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!!!\n");
+                #endif
+                LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+                clear_bit_CAD = 0;
+                if (LMIC.sysname_is_FSMA_node == 1) {
+                    break; // if channel is busy
+                }
+            } else {
+                #if LMIC_DEBUG_LEVEL > 0
+                    LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
+                #endif
+                clear_bit_CAD = 1;
+            }
         }
     }
 
@@ -1239,7 +1247,14 @@ u1_t cadlora_fixedDIFS (void) {
     #if LMIC_DEBUG_LEVEL > 0
         LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, clear_bit_LBT:%d\n", clear_bit_CAD, clear_bit_LBT);
     #endif
-    return ((clear_bit_CAD == 1) || (clear_bit_LBT == 0)) ;
+
+    if (LMIC.sysname_is_FSMA_node == 0) {
+        clear_status = (detected_max_energy == 0) && (clear_bit_CAD == 1);
+    } else {
+        clear_status = (clear_bit_CAD == 1) || (detected_min_energy == 0);
+    }
+
+    return clear_status;
 }
 
 uint8_t fsmacadlora(){ 

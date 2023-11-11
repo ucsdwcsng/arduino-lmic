@@ -1245,7 +1245,7 @@ u1_t cadlora_fixedDIFS (void) {
 
     // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
     #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, clear_bit_LBT:%d\n", clear_bit_CAD, clear_bit_LBT);
+        LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, detected_max_energy:%d, detected_min_energy:%d\n", clear_bit_CAD, detected_max_energy, detected_min_energy);
     #endif
 
     if (LMIC.sysname_is_FSMA_node == 0) {

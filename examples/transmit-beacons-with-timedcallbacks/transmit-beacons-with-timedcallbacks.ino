@@ -155,6 +155,14 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
+    // blink to show reset
+  for(int i=0; i<5; i++) {
+    digitalWrite(LED_BUILTIN, LOW); // turn OFF
+    delay(200);
+    digitalWrite(LED_BUILTIN, HIGH); // turn ON
+    delay(200);
+  }
+
   intialize();
   os_setCallback(&arbiter_job, tx_func);
 }

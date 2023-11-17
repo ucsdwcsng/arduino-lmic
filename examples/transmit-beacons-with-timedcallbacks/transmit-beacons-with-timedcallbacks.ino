@@ -7,10 +7,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define ADAFRUIT_FEATHER_M0 2
-
 // Pin mapping Adafruit feather RP2040
-#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 2))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,
@@ -21,7 +19,8 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-int32_t interrupt_timer = us2osticks(3000 + 2048*2);
+// int32_t interrupt_timer = us2osticks(5200 + 2048*1);//SF-8, DIFS-1
+int32_t interrupt_timer = us2osticks(8800 + 2048*1);//SF-8, DIFS-2
 
 // Pin mapping Adafruit feather M0
 #elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
@@ -140,7 +139,7 @@ static void intialize() {
   LMIC.sysname_enable_variable_cad_difs = 0;
 
   LMIC.lbt_ticks = 8;
-  LMIC.sysname_cad_difs = 1;
+  LMIC.sysname_cad_difs = 2;
   LMIC.sysname_lbt_dbmin = -115;
   // LMIC.sysname_backoff_cfg1 = 12;
   // LMIC.sysname_backoff_cfg2 = 64;

@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 37
+#define NODE_IDX 38
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -246,7 +246,9 @@ void rx(osjobcb_t func)
 
 static void experiment_timeout_func(osjob_t *job) {
   Serial.println("Experiment timeout function triggered...");
-
+  radio_init();
+  os_radio(RADIO_RST);
+  
   // Immediately trigger  timed_executor
   global_cad_counter = global_cad_counter + LMIC.sysname_cad_counter;
   global_lbt_counter = global_lbt_counter + LMIC.sysname_lbt_counter;

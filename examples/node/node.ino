@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 38
+#define NODE_IDX 33
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -169,7 +169,7 @@ byte reg_array[64];
 ostime_t interarrival_array[2048];
 u4_t interarrival_ind;
 ostime_t expt_start_time, expt_stop_time; // 1ms is 62.5 os ticks
-int experiment_time
+int experiment_time;
 int arbiter_state;
 u4_t scheduler_list_ms[SCHEDULE_LEN];
 
@@ -604,8 +604,6 @@ static void arbiter_fn(osjob_t *job)
   // byte 1    : Command to Node
   // byte 2    : Register
   // byte 3    : Value
-  Serial.print("buf_in[0]: ");
-  Serial.println(buf_in[0]);
 
   if ((buf_in[0] == NODE_IDX || buf_in[0] == 255) && !LMIC.sysname_crc_err)
   {
@@ -780,7 +778,7 @@ static void arbiter_fn(osjob_t *job)
       // Start Continuous Transmission
       prepare_multi_tx();
       expt_start_time = os_getTime();
-      experiment_time = reg_array[2] * reg_array[3]
+      experiment_time = reg_array[2] * reg_array[3];
       expt_stop_time = expt_start_time + ms2osticks(experiment_time * 1000);
       interarrival_array[interarrival_ind] = expt_start_time;
       interarrival_ind++;
@@ -788,7 +786,7 @@ static void arbiter_fn(osjob_t *job)
       //set timeout callback to bring out CAD/TX mode and end experiment
       Serial.print("Setting experiment timeout after: ");
       Serial.print(experiment_time);
-      Serial.println(" ms")
+      Serial.println(" ms");
       os_setTimedCallback(&timeoutjob, expt_stop_time, experiment_timeout_func);
 
       os_setCallback(job, timed_executor);
@@ -861,7 +859,7 @@ void setup()
 
   reg_array[0] = 90; // tx_interval
   reg_array[1] = 16; // Packet Size Bytes
-  reg_array[2] = 10; // Experiment run length in seconds
+  reg_array[2] = 0; // Experiment run length in seconds
   reg_array[3] = 1;  // Time multiplier for expt time
   reg_array[4] = 0;  // Enable CAD - OFF by default
   reg_array[5] = 8;  // DIFS as number of CADs

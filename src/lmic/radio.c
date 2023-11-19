@@ -1301,11 +1301,11 @@ uint8_t fsmacadlora(){
         // For Node: channel should be busy (== 0) and is node (== 1)
         tx_condition = (clear_bit == 1) ^ (LMIC.sysname_is_FSMA_node == 1); // (XOR operation)
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("clear_bit: %d, is node: %d\n", clear_bit, LMIC.sysname_is_FSMA_node);
+            LMIC_DEBUG_PRINTF("clear_bit: %d, is node: %d, Tx condition: %d\n", clear_bit, LMIC.sysname_is_FSMA_node, tx_condition);
         #endif
 
         // if transmit condition not met and it is a FSMA node - apply backoff
-        if(!tx_condition && LMIC.sysname_is_FSMA_node){
+        if(!tx_condition && (LMIC.sysname_is_FSMA_node == 1)){
             if (LMIC.sysname_enable_exponential_backoff) {
                 exponent_count =  exponent_count + 1;
             }
@@ -1314,10 +1314,12 @@ uint8_t fsmacadlora(){
             hal_waitUntil(os_getTime() + ms2osticks(cur_backoff*LMIC.sysname_backoff_cfg1));
         }
 
+        if(!tx_condition && (LMIC.sysname_is_FSMA_node == 0)){
+            LMIC_DEBUG_PRINTF("Channel is busy at %"LMIC_PRId_ostime_t"\n", os_getTime());
+        }
+
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("Tx condition: %d\n",tx_condition);
-            LMIC_DEBUG_PRINTF("Exponential backoff: status=%d, multiplier=%d\n",LMIC.sysname_enable_exponential_backoff, exponent_backoff_multiplier);
-            LMIC_DEBUG_PRINTF("Variable CAD DIFS: status=%d, multiplier=%d\n",LMIC.sysname_enable_variable_cad_difs, variable_CAD_DIFS_multiplier);
+            LMIC_DEBUG_PRINTF("Exponential backoff: status=%d, multiplier limit=%d\n, backoff multiplier:%d",LMIC.sysname_enable_exponential_backoff, exponent_backoff_multiplier, cur_backoff);
         #endif
     }
     return tx_condition;
@@ -1906,9 +1908,9 @@ void radio_monitor_rssi(ostime_t nTicks, oslmic_radio_rssi_t *pRssi) {
 
     rxlora(RXMODE_SCAN);
 
-		#if LMIC_DEBUG_LEVEL > 0
-		LMIC_DEBUG_PRINTF("Inside Monitor RSSI\n");
-		#endif
+    #if LMIC_DEBUG_LEVEL > 0
+    LMIC_DEBUG_PRINTF("Inside Monitor RSSI\n");
+    #endif
 
     // while we're waiting for the PLLs to spin up, determine which
     // band we're in and choose the base RSSI.

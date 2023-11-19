@@ -46,11 +46,11 @@
 // RFM92 boards.
 // #define CFG_sx1272_radio 1
 #ifndef ADAFRUIT_FEATHER_M0
-#define ADAFRUIT_FEATHER_M0 0
+#define ADAFRUIT_FEATHER_M0 1
 #endif
 
 #ifndef ADAFRUIT_FEATHER_RP2040
-#define ADAFRUIT_FEATHER_RP2040 1
+#define ADAFRUIT_FEATHER_RP2040 0
 #endif
 
 #if ((ADAFRUIT_FEATHER_M0 == 1) || (ADAFRUIT_FEATHER_RP2040 == 1))
@@ -97,13 +97,13 @@
 // configured (e.g. on AVR it is not by default), otherwise using it can
 // cause crashing.
 #ifndef LMIC_DEBUG_LEVEL
-#define LMIC_DEBUG_LEVEL 0
+#define LMIC_DEBUG_LEVEL 1
 #endif
 
 // Enable this to allow using printf() to print to the given serial port
 // (or any other Print object). This can be easy for debugging. The
 // current implementation only works on AVR, though.
-//#define LMIC_PRINTF_TO Serial
+#define LMIC_PRINTF_TO Serial
 
 // Enable this to use interrupt handler routines listening for RISING signals.
 // Otherwise, the library polls digital input lines for changes.

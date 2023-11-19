@@ -169,6 +169,7 @@ byte reg_array[64];
 ostime_t interarrival_array[2048];
 u4_t interarrival_ind;
 ostime_t expt_start_time, expt_stop_time; // 1ms is 62.5 os ticks
+int experiment_time
 int arbiter_state;
 u4_t scheduler_list_ms[SCHEDULE_LEN];
 
@@ -248,7 +249,7 @@ static void experiment_timeout_func(osjob_t *job) {
   Serial.println("Experiment timeout function triggered...");
   radio_init();
   os_radio(RADIO_RST);
-  
+
   // Immediately trigger  timed_executor
   global_cad_counter = global_cad_counter + LMIC.sysname_cad_counter;
   global_lbt_counter = global_lbt_counter + LMIC.sysname_lbt_counter;
@@ -779,12 +780,15 @@ static void arbiter_fn(osjob_t *job)
       // Start Continuous Transmission
       prepare_multi_tx();
       expt_start_time = os_getTime();
-      expt_stop_time = expt_start_time + ms2osticks(reg_array[2] * reg_array[3] * 1000);
+      experiment_time = reg_array[2] * reg_array[3]
+      expt_stop_time = expt_start_time + ms2osticks(experiment_time * 1000);
       interarrival_array[interarrival_ind] = expt_start_time;
       interarrival_ind++;
 
       //set timeout callback to bring out CAD/TX mode and end experiment
-      Serial.println("Setting experiment timeout!");
+      Serial.print("Setting experiment timeout after: ");
+      Serial.print(experiment_time);
+      Serial.println(" ms")
       os_setTimedCallback(&timeoutjob, expt_stop_time, experiment_timeout_func);
 
       os_setCallback(job, timed_executor);

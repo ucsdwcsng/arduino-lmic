@@ -725,6 +725,11 @@ static void configPower () {
 #error Missing CFG_sx1272_radio/CFG_sx1276_radio
 #endif /* CFG_sx1272_radio */
 
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("Policy:%d, effective power=%d\n", eff_pw);
+        LMIC_DEBUG_PRINTF("rPaConfig: %d, rPaDac: %d, rOcp: %d\n", rPaConfig, rPaDac, rOcp);
+    #endif
+    
     writeReg(RegPaConfig, rPaConfig);
     writeReg(RegPaDac, (readReg(RegPaDac) & ~SX127X_PADAC_POWER_MASK) | rPaDac);
     writeReg(RegOcp, rOcp | SX127X_OCP_ENA);
@@ -1184,6 +1189,7 @@ u1_t cadlora_fixedDIFS (void) {
     uint8_t detected_min_energy = 0; // min energy to avoid false positives
     uint8_t detected_max_energy = 0; // max energy to detect as threshold
     uint8_t clear_bit_CAD = 1; // clear_bit from CAD
+    uint8_t check_bit_CAD = 0; // to check 
     uint8_t clear_status = 0;
 
     // --- doing LBT ----
@@ -1209,10 +1215,13 @@ u1_t cadlora_fixedDIFS (void) {
     LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
     LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
 
-    configCAD();
-
     if ((detected_max_energy == 0) || (LMIC.sysname_is_FSMA_node == 1)) {
-    // --- doing CAD ----
+        LMIC.rps = LMIC.sysname_cad_rps;
+        LMIC.freq = LMIC.sysname_cad_freq_vec[1];
+
+        // doing CAD 
+        configCAD();
+
         for(u2_t ind = 0; ind < LMIC.sysname_cad_difs; ind++){
             // clear all radio IRQ flags
             writeReg(LORARegIrqFlags, 0xFF);
@@ -1241,6 +1250,41 @@ u1_t cadlora_fixedDIFS (void) {
                 clear_bit_CAD = 1;
             }
         }
+    }
+
+    if ((LMIC.sysname_is_FSMA_node == 1)) {
+        // wait for few ms
+        hal_waitUntil(os_getTime() + ms2osticks(LMIC.sysname_waittime_between_cads));
+
+        LMIC.rps = LMIC.sysname_tx_rps;
+        LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+        // doing CAD 
+        configCAD();
+
+        // clear all radio IRQ flags
+        writeReg(LORARegIrqFlags, 0xFF);
+        // set radio to CAD mode
+        opmode(OPMODE_CAD);
+        u1_t flags = 0;
+        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+            flags = readReg(LORARegIrqFlags);
+        }
+        // Increment CAD Counter
+        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+        if (flags & IRQ_LORA_CDDETD_MASK) {
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED in CAD_2...!!!\n");
+            #endif
+            LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+            check_bit_CAD = 0;
+        } else {
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY in CAD_2\n");
+            #endif
+            check_bit_CAD = 1;
+        }
+        clear_bit_CAD = (clear_bit_CAD == 1) || (check_bit_CAD == 0) ;
     }
 
     // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
@@ -1319,7 +1363,7 @@ uint8_t fsmacadlora(){
         }
 
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("Exponential backoff: status=%d, multiplier limit=%d\n, backoff multiplier:%d",LMIC.sysname_enable_exponential_backoff, exponent_backoff_multiplier, cur_backoff);
+            LMIC_DEBUG_PRINTF("Exponential backoff: status=%d, multiplier limit=%d, backoff multiplier:%d\n",LMIC.sysname_enable_exponential_backoff, exponent_backoff_multiplier, cur_backoff);
         #endif
     }
     return tx_condition;

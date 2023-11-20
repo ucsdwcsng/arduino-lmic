@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 33
+#define NODE_IDX 38
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -786,7 +786,7 @@ static void arbiter_fn(osjob_t *job)
       //set timeout callback to bring out CAD/TX mode and end experiment
       Serial.print("Setting experiment timeout after: ");
       Serial.print(experiment_time);
-      Serial.println(" ms");
+      Serial.println(" s");
       os_setTimedCallback(&timeoutjob, expt_stop_time, experiment_timeout_func);
 
       os_setCallback(job, timed_executor);
@@ -831,8 +831,9 @@ void setup()
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);             // WCSNG
   LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.txpow = 21;
-  LMIC.radio_txpow = 21; // WCSNG
+  LMIC.txpow = -2;
+  LMIC.radio_txpow = -5; // WCSNG
+  LMIC.adrTxPow = -3;
 
   // Set the generic TRX frequencies:
   for (byte idx = 0; idx < 24; idx++)
@@ -859,7 +860,7 @@ void setup()
 
   reg_array[0] = 90; // tx_interval
   reg_array[1] = 16; // Packet Size Bytes
-  reg_array[2] = 0; // Experiment run length in seconds
+  reg_array[2] = 1; // Experiment run length in seconds
   reg_array[3] = 1;  // Time multiplier for expt time
   reg_array[4] = 0;  // Enable CAD - OFF by default
   reg_array[5] = 8;  // DIFS as number of CADs
@@ -886,6 +887,7 @@ void setup()
   reg_array[51] = 0; // Disable exponential backoff
   LMIC.sysname_is_FSMA_node = 1;
   LMIC.sysname_enable_variable_cad_difs = 0;
+  LMIC.sysname_waittime_between_cads = 5; // in ms
 
   for (byte idx = 0; idx < 20; idx++)
     reg_array[24 + idx] = RSSI_RESET_VAL;

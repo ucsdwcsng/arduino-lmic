@@ -568,6 +568,7 @@ struct lmic_t {
     u1_t        sysname_is_FSMA_node; // transmit only if node receives free beacons
     u1_t        sysname_enable_exponential_backoff;
     u1_t        sysname_enable_variable_cad_difs;
+    u1_t        sysname_waittime_between_cads;
 
     s2_t        sysname_lbt_rssi_mean;
     s2_t        sysname_lbt_rssi_max;

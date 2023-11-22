@@ -24,7 +24,7 @@ const lmic_pinmap lmic_pins = {
 };
 
 // int32_t interrupt_timer = us2osticks(9000 + 2048*1);//SF-8, DIFS-1
-int32_t interrupt_timer = us2osticks(5600 + 2048*1);//SF-8, DIFS-2
+int32_t interrupt_timer = us2osticks(5600 + 2048 * 1);  //SF-8, DIFS-2
 
 // Pin mapping Adafruit feather M0
 #elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
@@ -34,11 +34,11 @@ const lmic_pinmap lmic_pins = {
   .rst = 4,
   .dio = { 3, 6, LMIC_UNUSED_PIN },
   .rxtx_rx_active = 0,
-  .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
+  .rssi_cal = 8,  // LBT cal for the Adafruit Feather M0 LoRa, in dB
   .spi_freq = 8000000,
 };
 
-int32_t interrupt_timer = us2osticks(4500 + 2048*2);
+int32_t interrupt_timer = us2osticks(4500 + 2048 * 2);
 #define VBATPIN A7
 
 #else
@@ -52,7 +52,7 @@ const lmic_pinmap lmic_pins = {
 
 // int32_t interrupt_timer = us2osticks(7000 + 2048*2);
 // int32_t interrupt_timer = us2osticks(35678 + 2048*2); //SF-10, DIFS-2
-int32_t interrupt_timer = us2osticks(21000 + 2048*2); //SF-10, DIFS-2
+int32_t interrupt_timer = us2osticks(21000 + 2048 * 2);  //SF-10, DIFS-2
 #endif
 
 // These callbacks are only used in over-the-air activation, so they are
@@ -68,7 +68,7 @@ osjob_t interrupt_job;
 osjob_t sleep_job;
 osjob_t timeoutjob;
 byte reg_array[64];
-ostime_t expt_start_time, expt_stop_time; // 1ms is 62.5 os ticks
+ostime_t expt_start_time, expt_stop_time;  // 1ms is 62.5 os ticks
 int32_t experiment_time;
 
 void tx(osjobcb_t func) {
@@ -76,7 +76,7 @@ void tx(osjobcb_t func) {
   // os_radio(RADIO_RST);
 
   // start the transmission
-  // Serial.println("Setting timed callback and transmitting..");
+  Serial.println("Setting timed callback and transmitting..");
   // os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*7), interrupt_func);
   // os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
   os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
@@ -92,12 +92,11 @@ static void tx_func(osjob_t *job) {
 
 static void interrupt_func(osjob_t *job) {
   // Serial.println("Inside interrupt fn ...");
-  hal_pin_rst(0); // drive RST pin low
-  hal_waitUntil(os_getTime()+us2osticks(200)); // wait >100us
-  hal_pin_rst(2); // configure RST pin floating!
-  hal_waitUntil(os_getTime()+us2osticks(200));
+  hal_pin_rst(0);                                 // drive RST pin low
+  hal_waitUntil(os_getTime() + us2osticks(200));  // wait >100us
+  hal_pin_rst(2);                                 // configure RST pin floating!
+  hal_waitUntil(os_getTime() + us2osticks(200));
   os_setCallback(job, tx_func);
-
 }
 
 static void sleep(osjob_t *job) {
@@ -107,12 +106,11 @@ static void sleep(osjob_t *job) {
   os_setCallback(job, tx_func);
 }
 
-static void rxdone_func(osjob_t *job)
-{
+static void rxdone_func(osjob_t *job) {
   // Blink once to confirm reception and then keep the led on
-  digitalWrite(LED_BUILTIN, LOW); // off
+  digitalWrite(LED_BUILTIN, LOW);  // off
   delay(10);
-  digitalWrite(LED_BUILTIN, HIGH); // on
+  digitalWrite(LED_BUILTIN, HIGH);  // on
 
   Serial.print("[");
   Serial.print(LMIC.frame[0]);
@@ -130,7 +128,7 @@ static void rxdone_func(osjob_t *job)
   Serial.print("; ");
 
   Serial.print("SNR: ");
-  Serial.print(LMIC.snr/4);
+  Serial.print(LMIC.snr / 4);
   Serial.print("; ");
 
   Serial.print("CRC: ");
@@ -144,11 +142,10 @@ static void rxdone_func(osjob_t *job)
     //set timeout callback to stop sending free beacons
     Serial.print("Setting experiment timeout after: ");
     Serial.print(experiment_time);
-    Serial.println("s");
-    os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks(experiment_time * 1000), experiment_timeout_func);
+    Serial.println("s + 10s");
+    os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks((experiment_time+10) * 1000), experiment_timeout_func);
     os_setCallback(&arbiter_job, tx_func);
-  }
-  else if ((LMIC.frame[1] == 2) &&(LMIC.frame[2] == 2 || LMIC.frame[2] == 3)) {
+  } else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3)) {
     reg_array[LMIC.frame[2]] = LMIC.frame[3];
     Serial.print("Writing Reg: ");
     Serial.print(LMIC.frame[2], HEX);
@@ -156,25 +153,22 @@ static void rxdone_func(osjob_t *job)
     Serial.print(LMIC.frame[3], HEX);
     Serial.print("\n");
     os_setCallback(&arbiter_job, rx_func);
-  }
-  else {
+  } else {
     os_setCallback(&arbiter_job, rx_func);
   }
 }
 
 // Enable rx mode and call func when a packet is received
-void rx(osjobcb_t func)
-{
+void rx(osjobcb_t func) {
   LMIC.osjob.func = func;
-  LMIC.rxtime = os_getTime(); // RX _now_
+  LMIC.rxtime = os_getTime();  // RX _now_
   // Enable "continuous" RX (e.g. without a timeout, still stops after
   // receiving a packet)
 
   os_radio(RADIO_RXON);
 }
 
-static void rx_func(osjob_t *job)
-{
+static void rx_func(osjob_t *job) {
   // GET BUF_OUT
   rx(rxdone_func);
 }
@@ -185,7 +179,7 @@ static void experiment_timeout_func(osjob_t *job) {
   Serial.println("Experiment timeout function triggered...");
   radio_init();
   os_radio(RADIO_RST);
-  os_setCallback(&arbiter_job, rx_func);
+  os_setCallback(&interrupt_job, rx_func);
 }
 
 static void intialize() {
@@ -205,15 +199,15 @@ static void intialize() {
   LMIC.radio_txpow = -4;  // WCSNG
 
   // Set the LMIC CAD Frequencies
-  LMIC.freq = 922000000;  // WCSNG
-  LMIC.sysname_cad_freq_vec[0] = 918000000; // reverse for gateway
-  LMIC.sysname_cad_freq_vec[1] = 920000000;// reverse for gateway
+  LMIC.freq = 922000000;                     // WCSNG
+  LMIC.sysname_cad_freq_vec[0] = 918000000;  // reverse for gateway
+  LMIC.sysname_cad_freq_vec[1] = 920000000;  // reverse for gateway
 
   // LMIC.sysname_cad_freq_vec[2] = 920000000 - 2000000;
   // LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
 
   // FSMA
-  LMIC.sysname_enable_cad = 1; //FSMA is sub category of CAD
+  LMIC.sysname_enable_cad = 1;  //FSMA is sub category of CAD
   LMIC.sysname_kill_cad_delay = 1;
   LMIC.sysname_enable_FSMA = 1;
   LMIC.sysname_is_FSMA_node = 0;
@@ -236,22 +230,24 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
-    // blink to show reset
-  for(int i=0; i<5; i++) {
-    digitalWrite(LED_BUILTIN, LOW); // turn OFF
+  // blink to show reset
+  for (int i = 0; i < 5; i++) {
+    digitalWrite(LED_BUILTIN, LOW);  // turn OFF
     delay(200);
-    digitalWrite(LED_BUILTIN, HIGH); // turn ON
+    digitalWrite(LED_BUILTIN, HIGH);  // turn ON
     delay(200);
   }
 
-#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.   
+#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
   float measuredvbat = analogRead(VBATPIN);
-  measuredvbat *= 2;    // we divided by 2, so multiply back
-  measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
-  measuredvbat /= 1024; // convert to voltage
-  Serial.print("VBat: " ); Serial.println(measuredvbat);
-  float vbatPercent = (measuredvbat - 3.2)*10 // battery ranges from 3.2v to 4.2v
-  Serial.print("VBat Percentage: " ); Serial.println(vbatPercent);
+  measuredvbat *= 2;     // we divided by 2, so multiply back
+  measuredvbat *= 3.3;   // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024;  // convert to voltage
+  Serial.print("VBat: ");
+  Serial.println(measuredvbat);
+  float vbatPercent = (measuredvbat - 3.2) * 10  // battery ranges from 3.2v to 4.2v
+                                             Serial.print("VBat Percentage: ");
+  Serial.println(vbatPercent);
 #endif
 
   // prepare data
@@ -261,11 +257,11 @@ void setup() {
   // set completion function.
   LMIC.osjob.func = sleep;
 
-  reg_array[2] = 1; // Experiment run length in seconds
+  reg_array[2] = 1;  // Experiment run length in seconds
   reg_array[3] = 1;  // Time multiplier for expt time
 
   intialize();
-  os_setCallback(&arbiter_job, rx_func); // this will only sense and transmit when experiment starts
+  os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts
   // os_setCallback(&arbiter_job, tx_func); // this will always sense and transmit
 }
 

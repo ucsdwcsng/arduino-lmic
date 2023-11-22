@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 38
+#define NODE_IDX 39
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -185,6 +185,10 @@ u4_t global_lbt_counter;
 // Transmit the given string and call the given function afterwards
 void tx(osjobcb_t func)
 {
+  // set transmit power
+  LMIC.txpow = 30;
+  LMIC.radio_txpow = 30; // WCSNG
+
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
@@ -203,6 +207,10 @@ void tx(osjobcb_t func)
 
 void tx_multi(osjobcb_t func)
 {
+  // set transmit power
+  // LMIC.txpow = -2;
+  // LMIC.radio_txpow = -4; // WCSNG
+
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode

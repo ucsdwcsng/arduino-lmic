@@ -399,6 +399,10 @@ static void readBuf (u1_t addr, xref2u1_t buf, u1_t len) {
 static void requestModuleActive(bit_t state) {
     ostime_t const ticks = hal_setModuleActive(state);
 
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("In requestModuleActive: ticks = %d, state = %d\n", ticks, state);
+    #endif
+
     if (ticks)
         hal_waitUntil(os_getTime() + ticks);;
 }
@@ -413,10 +417,17 @@ static void writeOpmode(u1_t mode) {
 }
 
 static void opmode (u1_t mode) {
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("Inside opmode");
+    #endif
     writeOpmode((readReg(RegOpMode) & ~OPMODE_MASK) | mode);
 }
 
 static void opmodeLora() {
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("Inside opmodeLora");
+    #endif
+
     u1_t u = OPMODE_LORA;
 #ifdef CFG_sx1276_radio
     if (LMIC.freq <= SX127X_FREQ_LF_MAX) {
@@ -925,9 +936,9 @@ void configCAD () {
 #else
     hal_pin_rst(1); // drive RST pin high
 #endif
-    hal_waitUntil(os_getTime()+ms2osticks(1)); // wait >100us
+    hal_waitUntil(os_getTime()+us2osticks(200)); // wait >100us
     hal_pin_rst(2); // configure RST pin as floating
-    hal_waitUntil(os_getTime()+ms2osticks(1)); // wait 5ms => WCSNG changed to 1ms
+    hal_waitUntil(os_getTime()+us2osticks(200)); // wait 5ms => WCSNG changed to 1ms
 	}
 
     // mask all IRQ bits except CAD completed & detected
@@ -1616,7 +1627,7 @@ static void starttx () {
 #endif
         opmode(OPMODE_SLEEP);
 #if SYSNAME_TX_BTONE == 0
-        hal_waitUntil(os_getTime() + ms2osticks(1));
+        hal_waitUntil(os_getTime() + us2osticks(200));
 #endif
     }
 
@@ -1852,10 +1863,11 @@ int radio_init () {
 #else
     hal_pin_rst(1); // drive RST pin high
 #endif
-    hal_waitUntil(os_getTime()+ms2osticks(1)); // wait >100us
+    // hal_waitUntil(os_getTime()+ms2osticks(1)); // wait >100us
+    hal_waitUntil(os_getTime()+us2osticks(200)); // wait >100us
     hal_pin_rst(2); // configure RST pin floating!
-    hal_waitUntil(os_getTime()+ms2osticks(1)); // wait 5ms => WCSNG changed to 1ms
-
+    // hal_waitUntil(os_getTime()+ms2osticks(1)); //
+    hal_waitUntil(os_getTime()+us2osticks(200));    
     opmode(OPMODE_SLEEP);
 
     // some sanity checks, e.g., read version number

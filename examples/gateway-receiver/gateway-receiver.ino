@@ -253,6 +253,18 @@ void setup()
   Serial.flush();
   Serial.println("Hi, this is gateway rx");
 
+#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+  float measuredvbat = analogRead(VBATPIN);
+  measuredvbat *= 2;     // we divided by 2, so multiply back
+  measuredvbat *= 3.3;   // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024;  // convert to voltage
+  Serial.print("VBat: ");
+  Serial.println(measuredvbat);
+  float vbatPercent = (measuredvbat - 3.2) * 100;  // battery ranges from 3.2v to 4.2v
+  Serial.print("VBat Percentage: ");
+  Serial.println(vbatPercent);
+#endif
+
   // setup initial job
   os_setCallback(&arbiter_job, rx_func);
 }

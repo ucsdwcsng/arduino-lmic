@@ -64,10 +64,7 @@ void os_getArtEui(u1_t *buf) {}
 void os_getDevEui(u1_t *buf) {}
 void os_getDevKey(u1_t *buf) {}
 
-osjob_t arbiter_job;
-osjob_t interrupt_job;
-osjob_t sleep_job;
-osjob_t timeoutjob;
+osjob_t arbiter_job, interrupt_job, sleep_job, timeoutjob;
 byte reg_array[64];
 ostime_t expt_start_time, expt_stop_time;  // 1ms is 62.5 os ticks
 int32_t experiment_time;
@@ -115,11 +112,6 @@ static void sleep(osjob_t *job) {
 }
 
 static void rxdone_func(osjob_t *job) {
-  // Blink once to confirm reception and then keep the led on
-  digitalWrite(LED_BUILTIN, LOW);  // off
-  delay(10);
-  digitalWrite(LED_BUILTIN, HIGH);  // on
-
   Serial.print("[");
   Serial.print(LMIC.frame[0]);
   Serial.print(",");

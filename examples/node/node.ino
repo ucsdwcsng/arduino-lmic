@@ -84,6 +84,7 @@ const lmic_pinmap lmic_pins = {
   .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
   .spi_freq = 8000000,
 };
+#define VBATPIN A7
 
 #else
 // Pin mapping
@@ -863,8 +864,6 @@ void setup()
   // LMIC.sysname_cad_freq_vec[2] = trx_freq_vec[freq_expt_ind] - 2000000;
   // LMIC.sysname_cad_freq_vec[3] = trx_freq_vec[freq_expt_ind] - 4000000;
 
-  Serial.flush();
-
   // Setup Registers
   interarrival_ind = 0;
   arbiter_state = 0;       // Resting state
@@ -908,7 +907,20 @@ void setup()
   buf_in[1] == 0;
   buf_in[2] == 0;
 
+#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+  float measuredvbat = analogRead(VBATPIN);
+  measuredvbat *= 2;     // we divided by 2, so multiply back
+  measuredvbat *= 3.3;   // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024;  // convert to voltage
+  Serial.print("VBat: ");
+  Serial.println(measuredvbat);
+  float vbatPercent = (measuredvbat - 3.2) * 100;  // battery ranges from 3.2v to 4.2v
+  Serial.print("VBat Percentage: ");
+  Serial.println(vbatPercent);
+#endif
+
   // Say Hi
+  Serial.flush();
   Serial.print("Hi I am Node ");
   Serial.print(NODE_IDX);
   Serial.print("\n");

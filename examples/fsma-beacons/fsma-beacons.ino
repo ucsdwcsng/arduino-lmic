@@ -230,7 +230,7 @@ static void intialize() {
   measuredvbat /= 1024;  // convert to voltage
   Serial.print("VBat: ");
   Serial.println(measuredvbat);
-  float vbatPercent = (measuredvbat - 3.2) * 10  // battery ranges from 3.2v to 4.2v
+  float vbatPercent = (measuredvbat - 3.2) * 100;  // battery ranges from 3.2v to 4.2v
   Serial.print("VBat Percentage: ");
   Serial.println(vbatPercent);
 #endif

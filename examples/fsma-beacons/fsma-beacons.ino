@@ -23,8 +23,8 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-// int32_t interrupt_timer = us2osticks(9000 + 2048*1);//SF-8, DIFS-1
-int32_t interrupt_timer = us2osticks(5600 + 2048 * 1);  //SF-8, DIFS-2
+int32_t interrupt_timer = us2osticks(10000 + 2048 * 1);  //SF-8, DIFS-1
+// int32_t interrupt_timer = us2osticks(5600 + 2048 * 1);  //SF-8, DIFS-1
 
 // Pin mapping Adafruit feather M0
 #elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
@@ -38,8 +38,8 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-// int32_t interrupt_timer = us2osticks(4500 + 2048 * 2);
-int32_t interrupt_timer = us2osticks(1000+2048);
+int32_t interrupt_timer = us2osticks(16800 + 2048);
+// int32_t interrupt_timer = us2osticks(1000 + 2048);
 #define VBATPIN A7
 
 #else
@@ -73,15 +73,12 @@ ostime_t expt_start_time, expt_stop_time;  // 1ms is 62.5 os ticks
 int32_t experiment_time;
 
 void tx(osjobcb_t func) {
-  // the radio is probably in RX mode; stop it.
-  // os_radio(RADIO_RST);
-
-  // start the transmission
   // Serial.println("Setting timed callback and transmitting..");
-  // os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*7), interrupt_func);
-  // os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
+
+  // set trigger
   os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
 
+  // start the transmission
   os_radio(RADIO_TX);
   // os_setCallback(&sleep_job, sleep);
 }
@@ -97,7 +94,16 @@ static void interrupt_func(osjob_t *job) {
   // hal_waitUntil(os_getTime() + us2osticks(200));  // wait >100us
   // hal_pin_rst(2);                                 // configure RST pin floating!
   // hal_waitUntil(os_getTime() + us2osticks(200));
-  delay(0.1);
+
+  os_setCallback(job, tx_func);
+}
+
+static void interrupt_CAD_func(osjob_t *job) {
+  u1_t isChanneFree = 0;
+  while (isChanneFree == 0) {
+    isChanneFree = cadlora_fixedDIFS();
+  }
+  
   os_setCallback(job, tx_func);
 }
 
@@ -195,9 +201,9 @@ static void intialize() {
   //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_tx_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);              // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);   // WCSNG
-  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);    // WCSNG
+  LMIC.sysname_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
   LMIC.txpow = -4;
   LMIC.radio_txpow = -4;  // WCSNG
 
@@ -210,9 +216,9 @@ static void intialize() {
   // LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
 
   // FSMA
-  LMIC.sysname_enable_cad = 0;  //FSMA is sub category of CAD
+  LMIC.sysname_enable_cad = 1;  //FSMA is sub category of CAD
   LMIC.sysname_kill_cad_delay = 1;
-  LMIC.sysname_enable_FSMA = 0;
+  LMIC.sysname_enable_FSMA = 1;
   LMIC.sysname_is_FSMA_node = 0;
   LMIC.sysname_enable_exponential_backoff = 0;
   LMIC.sysname_enable_variable_cad_difs = 0;
@@ -220,6 +226,10 @@ static void intialize() {
   LMIC.lbt_ticks = 8;
   LMIC.sysname_cad_difs = 1;
   LMIC.sysname_lbt_dbmin = -115;
+  LMIC.sysname_lbt_counter = 0;
+  LMIC.sysname_cad_counter = 0;
+  LMIC.sysname_cad_detect_counter = 0;
+  LMIC.lbt_dbmax = -90;
   // LMIC.sysname_backoff_cfg1 = 12;
   // LMIC.sysname_backoff_cfg2 = 64;
 

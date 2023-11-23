@@ -1195,6 +1195,9 @@ uint8_t cadlora (){
 }
 
 u1_t cadlora_fixedDIFS (void) {
+#if LMIC_DEBUG_LEVEL > 0
+    LMIC_DEBUG_PRINTF("Starting sensing at %"LMIC_PRId_ostime_t"\n", os_getTime());
+#endif
 
     // intializing clear bit - gives channel status
     uint8_t detected_min_energy = 0; // min energy to avoid false positives
@@ -1263,7 +1266,7 @@ u1_t cadlora_fixedDIFS (void) {
         }
     }
 
-    if ((LMIC.sysname_is_FSMA_node == 1)) {
+    if (LMIC.sysname_is_FSMA_node == 1) {
         // wait for few ms
         hal_waitUntil(os_getTime() + ms2osticks(LMIC.sysname_waittime_between_cads));
 
@@ -1308,6 +1311,10 @@ u1_t cadlora_fixedDIFS (void) {
     } else {
         clear_status = (clear_bit_CAD == 1) || (detected_min_energy == 0);
     }
+
+#if LMIC_DEBUG_LEVEL > 0
+    LMIC_DEBUG_PRINTF("Ending sensing at %"LMIC_PRId_ostime_t"\n", os_getTime());
+#endif
 
     return clear_status;
 }

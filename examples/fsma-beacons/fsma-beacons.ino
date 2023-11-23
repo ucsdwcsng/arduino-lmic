@@ -281,8 +281,8 @@ void setup() {
   os_init();
 
   intialize();
-  // os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts and end after that
-  os_setCallback(&arbiter_job, tx_func);  // this will always sense and transmit
+  os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts and end after that
+  // os_setCallback(&arbiter_job, tx_func);  // this will always sense and transmit
 }
 
 void loop() {

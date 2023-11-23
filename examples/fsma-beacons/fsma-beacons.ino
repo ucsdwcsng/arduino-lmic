@@ -76,7 +76,7 @@ void tx(osjobcb_t func) {
   // os_radio(RADIO_RST);
 
   // start the transmission
-  Serial.println("Setting timed callback and transmitting..");
+  // Serial.println("Setting timed callback and transmitting..");
   // os_setTimedCallback(&interrupt_job,  os_getTime() + us2osticks(2250+2048*7), interrupt_func);
   // os_setTimedCallback(&interrupt_job, os_getTime() + us2osticks(12800 + 2048*2), interrupt_func);  // FSMA
   os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
@@ -138,6 +138,8 @@ static void rxdone_func(osjob_t *job) {
   // Arbiter
   if ((LMIC.frame[1] == 10) && (LMIC.frame[2] == 0)) {
     experiment_time = reg_array[2] * reg_array[3];
+    LMIC.sysname_cad_rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0);  // WCSNG (Reverse of Node)
+    LMIC.sysname_tx_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0); // WCSNG (Reverse of Node)
 
     //set timeout callback to stop sending free beacons
     Serial.print("Setting experiment timeout after: ");
@@ -145,7 +147,8 @@ static void rxdone_func(osjob_t *job) {
     Serial.println("s + 10s");
     os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks((experiment_time+10) * 1000), experiment_timeout_func);
     os_setCallback(&arbiter_job, tx_func);
-  } else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3)) {
+  } 
+  else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19)) {
     reg_array[LMIC.frame[2]] = LMIC.frame[3];
     Serial.print("Writing Reg: ");
     Serial.print(LMIC.frame[2], HEX);
@@ -153,7 +156,8 @@ static void rxdone_func(osjob_t *job) {
     Serial.print(LMIC.frame[3], HEX);
     Serial.print("\n");
     os_setCallback(&arbiter_job, rx_func);
-  } else {
+  } 
+  else {
     os_setCallback(&arbiter_job, rx_func);
   }
 }
@@ -179,12 +183,11 @@ static void experiment_timeout_func(osjob_t *job) {
   Serial.println("Experiment timeout function triggered...");
   radio_init();
   os_radio(RADIO_RST);
+  intialize();
   os_setCallback(&interrupt_job, rx_func);
 }
 
 static void intialize() {
-  // initialize runtime env
-  os_init();
 
   // disable RX IQ inversion
   LMIC.noRXIQinversion = true;
@@ -220,10 +223,18 @@ static void intialize() {
   // LMIC.sysname_backoff_cfg1 = 12;
   // LMIC.sysname_backoff_cfg2 = 64;
 
-  Serial.flush();
-  // Say Hi
-  Serial.print("Hi, I will sense channel and transmit beacons");
-  Serial.print("\n");
+#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+  float measuredvbat = analogRead(VBATPIN);
+  measuredvbat *= 2;     // we divided by 2, so multiply back
+  measuredvbat *= 3.3;   // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024;  // convert to voltage
+  Serial.print("VBat: ");
+  Serial.println(measuredvbat);
+  float vbatPercent = (measuredvbat - 3.2) * 10  // battery ranges from 3.2v to 4.2v
+  Serial.print("VBat Percentage: ");
+  Serial.println(vbatPercent);
+#endif
+
 }
 
 void setup() {
@@ -238,17 +249,10 @@ void setup() {
     delay(200);
   }
 
-#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
-  float measuredvbat = analogRead(VBATPIN);
-  measuredvbat *= 2;     // we divided by 2, so multiply back
-  measuredvbat *= 3.3;   // Multiply by 3.3V, our reference voltage
-  measuredvbat /= 1024;  // convert to voltage
-  Serial.print("VBat: ");
-  Serial.println(measuredvbat);
-  float vbatPercent = (measuredvbat - 3.2) * 10  // battery ranges from 3.2v to 4.2v
-                                             Serial.print("VBat Percentage: ");
-  Serial.println(vbatPercent);
-#endif
+  Serial.flush();
+  // Say Hi
+  Serial.print("Hi, I will sense channel and transmit beacons");
+  Serial.print("\n");
 
   // prepare data
   LMIC.dataLen = 0;
@@ -257,8 +261,15 @@ void setup() {
   // set completion function.
   LMIC.osjob.func = sleep;
 
+// setting default values in registers
   reg_array[2] = 1;  // Experiment run length in seconds
   reg_array[3] = 1;  // Time multiplier for expt time
+  reg_array[17] = 34; // 17: {4bits txsf, 4bits rxsf}
+  reg_array[18] = 34; // 18: {4bits txbw, 4bits rxbw}
+  reg_array[19] = 51; // 19: {4bits txcr, 4bits txcr}
+
+  // initialize runtime env
+  os_init();
 
   intialize();
   os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts

@@ -131,6 +131,7 @@ byte buf_tx[16];
 // 8: tx_interval_multiplier
 // 9: scheduler_interval_mode (0: Periodic, 1: Poisson, 2: Periodic with Variance);
 //---------------------------------
+
 // 10: Result - Counter Byte 0
 // 11: Result - Counter Byte 1
 // 12: Result - Counter Byte 2
@@ -147,8 +148,11 @@ byte buf_tx[16];
 // 22: Listen before talk max RSSI s1_t
 // 23: Kill CAD Wait time (0 or 1)
 //---------------------------------
+
 // 24--44 - Node Idx
+// 54--64 - Node Idx
 //---------------------------------
+
 // 45: periodic_tx_variance (x10 ms)
 
 // 46: Result - LBT Counter Byte 0
@@ -208,8 +212,8 @@ void tx(osjobcb_t func)
 void tx_multi(osjobcb_t func)
 {
   // set transmit power
-  // LMIC.txpow = -2;
-  // LMIC.radio_txpow = -4; // WCSNG
+  LMIC.txpow = -2;
+  LMIC.radio_txpow = -4; // WCSNG
 
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);

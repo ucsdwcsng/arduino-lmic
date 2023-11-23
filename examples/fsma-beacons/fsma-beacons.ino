@@ -38,7 +38,8 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-int32_t interrupt_timer = us2osticks(4500 + 2048 * 2);
+// int32_t interrupt_timer = us2osticks(4500 + 2048 * 2);
+int32_t interrupt_timer = us2osticks(1000+2048);
 #define VBATPIN A7
 
 #else
@@ -82,7 +83,7 @@ void tx(osjobcb_t func) {
   os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
 
   os_radio(RADIO_TX);
-  //os_setCallback(&sleep_job, sleep);
+  // os_setCallback(&sleep_job, sleep);
 }
 
 static void tx_func(osjob_t *job) {
@@ -92,10 +93,11 @@ static void tx_func(osjob_t *job) {
 
 static void interrupt_func(osjob_t *job) {
   // Serial.println("Inside interrupt fn ...");
-  hal_pin_rst(0);                                 // drive RST pin low
-  hal_waitUntil(os_getTime() + us2osticks(200));  // wait >100us
-  hal_pin_rst(2);                                 // configure RST pin floating!
-  hal_waitUntil(os_getTime() + us2osticks(200));
+  // hal_pin_rst(0);                                 // drive RST pin low
+  // hal_waitUntil(os_getTime() + us2osticks(200));  // wait >100us
+  // hal_pin_rst(2);                                 // configure RST pin floating!
+  // hal_waitUntil(os_getTime() + us2osticks(200));
+  delay(0.1);
   os_setCallback(job, tx_func);
 }
 
@@ -139,16 +141,15 @@ static void rxdone_func(osjob_t *job) {
   if ((LMIC.frame[1] == 10) && (LMIC.frame[2] == 0)) {
     experiment_time = reg_array[2] * reg_array[3];
     LMIC.sysname_cad_rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0);  // WCSNG (Reverse of Node)
-    LMIC.sysname_tx_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0); // WCSNG (Reverse of Node)
+    LMIC.sysname_tx_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0);   // WCSNG (Reverse of Node)
 
     //set timeout callback to stop sending free beacons
     Serial.print("Setting experiment timeout after: ");
     Serial.print(experiment_time);
     Serial.println("s + 10s");
-    os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks((experiment_time+10) * 1000), experiment_timeout_func);
+    os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks((experiment_time + 10) * 1000), experiment_timeout_func);
     os_setCallback(&arbiter_job, tx_func);
-  } 
-  else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19)) {
+  } else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19)) {
     reg_array[LMIC.frame[2]] = LMIC.frame[3];
     Serial.print("Writing Reg: ");
     Serial.print(LMIC.frame[2], HEX);
@@ -156,8 +157,7 @@ static void rxdone_func(osjob_t *job) {
     Serial.print(LMIC.frame[3], HEX);
     Serial.print("\n");
     os_setCallback(&arbiter_job, rx_func);
-  } 
-  else {
+  } else {
     os_setCallback(&arbiter_job, rx_func);
   }
 }
@@ -210,9 +210,9 @@ static void intialize() {
   // LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
 
   // FSMA
-  LMIC.sysname_enable_cad = 1;  //FSMA is sub category of CAD
+  LMIC.sysname_enable_cad = 0;  //FSMA is sub category of CAD
   LMIC.sysname_kill_cad_delay = 1;
-  LMIC.sysname_enable_FSMA = 1;
+  LMIC.sysname_enable_FSMA = 0;
   LMIC.sysname_is_FSMA_node = 0;
   LMIC.sysname_enable_exponential_backoff = 0;
   LMIC.sysname_enable_variable_cad_difs = 0;
@@ -234,7 +234,6 @@ static void intialize() {
   Serial.print("VBat Percentage: ");
   Serial.println(vbatPercent);
 #endif
-
 }
 
 void setup() {
@@ -261,19 +260,19 @@ void setup() {
   // set completion function.
   LMIC.osjob.func = sleep;
 
-// setting default values in registers
-  reg_array[2] = 1;  // Experiment run length in seconds
-  reg_array[3] = 1;  // Time multiplier for expt time
-  reg_array[17] = 34; // 17: {4bits txsf, 4bits rxsf}
-  reg_array[18] = 34; // 18: {4bits txbw, 4bits rxbw}
-  reg_array[19] = 51; // 19: {4bits txcr, 4bits txcr}
+  // setting default values in registers
+  reg_array[2] = 1;    // Experiment run length in seconds
+  reg_array[3] = 1;    // Time multiplier for expt time
+  reg_array[17] = 34;  // 17: {4bits txsf, 4bits rxsf}
+  reg_array[18] = 34;  // 18: {4bits txbw, 4bits rxbw}
+  reg_array[19] = 51;  // 19: {4bits txcr, 4bits txcr}
 
   // initialize runtime env
   os_init();
 
   intialize();
-  os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts
-  // os_setCallback(&arbiter_job, tx_func); // this will always sense and transmit
+  // os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts and end after that
+  os_setCallback(&arbiter_job, tx_func);  // this will always sense and transmit
 }
 
 void loop() {

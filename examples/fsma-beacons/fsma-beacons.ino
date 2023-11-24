@@ -10,6 +10,8 @@
 #define FREQ_CAD 918000000
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
+#define INTERRUPT_CAD 1
+#define BEACON_SYMBOLS 1
 
 // Pin mapping Adafruit feather RP2040
 #if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
@@ -38,7 +40,7 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-int32_t interrupt_timer = us2osticks(16800 + 2048);
+int32_t interrupt_timer = us2osticks(16800 + 2048*BEACON_SYMBOLS);
 // int32_t interrupt_timer = us2osticks(1000 + 2048);
 #define VBATPIN A7
 
@@ -69,11 +71,19 @@ byte reg_array[64];
 ostime_t expt_start_time, expt_stop_time;  // 1ms is 62.5 os ticks
 int32_t experiment_time;
 
+#if (defined(INTERRUPT_CAD) && (INTERRUPT_CAD == 1)) 
+  int32_t interrupt_cad_timer = us2osticks(1000 + 2048*BEACON_SYMBOLS);
+#endif
+
 void tx(osjobcb_t func) {
   // Serial.println("Setting timed callback and transmitting..");
-
+  LMIC.freq = FREQ_CAD;
   // set trigger
+#if (defined(INTERRUPT_CAD) && (INTERRUPT_CAD == 1)) 
+  os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_cad_timer, interrupt_CAD_func);  // FSMA
+#else
   os_setTimedCallback(&interrupt_job, os_getTime() + interrupt_timer, interrupt_func);  // FSMA
+#endif
 
   // start the transmission
   os_radio(RADIO_TX);
@@ -96,6 +106,9 @@ static void interrupt_func(osjob_t *job) {
 }
 
 static void interrupt_CAD_func(osjob_t *job) {
+  LMIC.sysname_enable_cad = 0;  //FSMA is sub category of CAD
+  LMIC.sysname_enable_FSMA = 1;
+
   u1_t isChanneFree = 0;
   while (isChanneFree == 0) {
     isChanneFree = cadlora_fixedDIFS();
@@ -137,17 +150,20 @@ static void rxdone_func(osjob_t *job) {
 
   // Arbiter
   if ((LMIC.frame[1] == 10) && (LMIC.frame[2] == 0)) {
-    experiment_time = reg_array[2] * reg_array[3];
+    // setting experiment variables
+    LMIC.freq = FREQ_CAD;
     LMIC.sysname_cad_rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0);  // WCSNG (Reverse of Node)
     LMIC.sysname_tx_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0);   // WCSNG (Reverse of Node)
 
     //set timeout callback to stop sending free beacons
+    experiment_time = reg_array[2] * reg_array[3];
     Serial.print("Setting experiment timeout after: ");
     Serial.print(experiment_time);
     Serial.println("s + 10s");
     os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks((experiment_time + 10) * 1000), experiment_timeout_func);
     os_setCallback(&arbiter_job, tx_func);
-  } else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19)) {
+  } 
+  else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19)) {
     reg_array[LMIC.frame[2]] = LMIC.frame[3];
     Serial.print("Writing Reg: ");
     Serial.print(LMIC.frame[2], HEX);
@@ -176,7 +192,9 @@ static void rx_func(osjob_t *job) {
 }
 
 static void experiment_timeout_func(osjob_t *job) {
+  // resetting to control params
   LMIC.freq = FREQ_CNFG;
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
 
   Serial.println("Experiment timeout function triggered...");
   radio_init();
@@ -208,9 +226,15 @@ static void intialize() {
   // LMIC.sysname_cad_freq_vec[3] = 920000000 - 4000000;
 
   // FSMA
-  LMIC.sysname_enable_cad = 1;  //FSMA is sub category of CAD
+  #if (defined(INTERRUPT_CAD) && (INTERRUPT_CAD == 1)) 
+    LMIC.sysname_enable_cad = 0;  //FSMA is sub category of CAD
+    LMIC.sysname_is_FSMA_node = 0;  //FSMA is sub category of CAD
+  #else
+    LMIC.sysname_enable_cad = 0;  //FSMA is sub category of CAD
+    LMIC.sysname_is_FSMA_node = 0;  //FSMA is sub category of CAD
+  #endif
+
   LMIC.sysname_kill_cad_delay = 1;
-  LMIC.sysname_enable_FSMA = 1;
   LMIC.sysname_is_FSMA_node = 0;
   LMIC.sysname_enable_exponential_backoff = 0;
   LMIC.sysname_enable_variable_cad_difs = 0;

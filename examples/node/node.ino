@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 39
+#define NODE_IDX 30
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -835,6 +835,9 @@ void setup()
   // initialize runtime env
   os_init();
 
+  // reset radio
+  radio_init();
+
   // disable RX IQ inversion
   LMIC.noRXIQinversion = true;
 
@@ -890,7 +893,7 @@ void setup()
   reg_array[23] = 1;   // Kill CAD Wait time (0 or 1)
 
   reg_array[45] = 10; // Variance if using periodic scheduling
-  LMIC.sysname_kill_cad_delay = 1; // Kill CAD Wait time (0 or 1)
+  LMIC.sysname_kill_cad_delay = 0; // Kill CAD Wait time (0 or 1)
   
   // FSMA
   reg_array[49] = 0; // Diasble FSMA  
@@ -898,7 +901,7 @@ void setup()
   reg_array[51] = 0; // Disable exponential backoff
   LMIC.sysname_is_FSMA_node = 1;
   LMIC.sysname_enable_variable_cad_difs = 0;
-  LMIC.sysname_waittime_between_cads = 5; // in ms
+  LMIC.sysname_waittime_between_cads = 2; // in ms
 
   for (byte idx = 0; idx < 20; idx++)
     reg_array[24 + idx] = RSSI_RESET_VAL;

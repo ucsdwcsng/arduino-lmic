@@ -398,11 +398,6 @@ static void readBuf (u1_t addr, xref2u1_t buf, u1_t len) {
 
 static void requestModuleActive(bit_t state) {
     ostime_t const ticks = hal_setModuleActive(state);
-
-    #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("In requestModuleActive: ticks = %d, state = %d\n", ticks, state);
-    #endif
-
     if (ticks)
         hal_waitUntil(os_getTime() + ticks);;
 }
@@ -417,17 +412,10 @@ static void writeOpmode(u1_t mode) {
 }
 
 static void opmode (u1_t mode) {
-    #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("Inside opmode");
-    #endif
     writeOpmode((readReg(RegOpMode) & ~OPMODE_MASK) | mode);
 }
 
 static void opmodeLora() {
-    #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("Inside opmodeLora");
-    #endif
-
     u1_t u = OPMODE_LORA;
 #ifdef CFG_sx1276_radio
     if (LMIC.freq <= SX127X_FREQ_LF_MAX) {
@@ -1832,6 +1820,13 @@ static void rxfsk (u1_t rxmode) {
 }
 
 static void startrx (u1_t rxmode) {
+    if ((readReg(RegOpMode) & OPMODE_MASK) != OPMODE_SLEEP) { //WCSNG code to avoid getting assert error
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("WARNING: Potential assert error - changing radio mode to OPMODE_SLEEP\n");
+        #endif
+
+        opmode(OPMODE_SLEEP);
+    }
     ASSERT( (readReg(RegOpMode) & OPMODE_MASK) == OPMODE_SLEEP );
     if(getSf(LMIC.rps) == FSK) { // FSK modem
         rxfsk(rxmode);

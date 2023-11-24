@@ -173,11 +173,11 @@ static void control_rxdone_func(osjob_t *job)
     //set timeout callback to stop sending free beacons
     experiment_time = reg_array[2] * reg_array[3];
     experiment_type = reg_array[4] * reg_array[49];
-    Serial.print("Starting experiment, type:");
-    Serial.print(experiment_type);  
-    Serial.print(", time: ");
-    Serial.print(experiment_time);
-    Serial.println("s + 10s");
+    // Serial.print("Starting experiment, type:");
+    // Serial.print(experiment_type);  
+    // Serial.print(", time: ");
+    // Serial.print(experiment_time);
+    // Serial.println("s + 10s");
     os_setTimedCallback(&timeout_job, os_getTime() + ms2osticks((experiment_time + 10) * 1000), experiment_timeout_func);
   } 
   else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19 ||  LMIC.frame[2] == 4  ||  LMIC.frame[2] == 49 )) {
@@ -210,7 +210,7 @@ static void experiment_timeout_func(osjob_t *job) {
   LMIC.freq = FREQ_CNFG;
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
 
-  Serial.println("Experiment timedout ...");
+  // Serial.println("Experiment timedout ...");
   radio_init();
   os_radio(RADIO_RST);
   os_setCallback(&timeout_job, rx_func);

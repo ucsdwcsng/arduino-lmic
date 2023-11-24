@@ -12,6 +12,7 @@
 #define FREQ_CNFG 922000000
 #define INTERRUPT_CAD 1
 #define BEACON_SYMBOLS 1
+#define VBATPIN A7
 
 // Pin mapping Adafruit feather RP2040
 #if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
@@ -42,7 +43,6 @@ const lmic_pinmap lmic_pins = {
 
 int32_t interrupt_timer = us2osticks(16800 + 2048*BEACON_SYMBOLS);
 // int32_t interrupt_timer = us2osticks(1000 + 2048);
-#define VBATPIN A7
 
 #else
 // Pin mapping
@@ -297,8 +297,8 @@ void setup() {
   os_init();
 
   intialize();
-  os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts and end after that
-  // os_setCallback(&arbiter_job, tx_func);  // this will always sense and transmit
+  // os_setCallback(&arbiter_job, rx_func);  // this will only sense and transmit when experiment starts and end after that
+  os_setCallback(&arbiter_job, tx_func);  // this will always sense and transmit
 }
 
 void loop() {

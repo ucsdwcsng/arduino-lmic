@@ -144,6 +144,8 @@ void tx_multi(osjobcb_t func)
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
   delay(1);
+  digitalWrite(LED_BUILTIN, LOW); // turn OFF
+
   // prepare data
   LMIC.dataLen = 20;
   LMIC.frame[0] = buf_in[1];;
@@ -264,6 +266,8 @@ static void txdone_func(osjob_t *job)
 
 static void txmultidone_func(osjob_t *job)
 {
+  digitalWrite(LED_BUILTIN, HIGH); // turn ON
+
   LMIC.freq = FREQ_CNFG; // FREQ_CNFG; // WCSNG
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
   os_setCallback(job, rx_func);

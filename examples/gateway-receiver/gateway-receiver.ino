@@ -61,6 +61,7 @@
 #define RSSI_OFFSET 64
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
+#define PRINT_TO_SERIAL 1
 
 // Pin mapping Adafruit feather RP2040
 #if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
@@ -147,9 +148,9 @@ static void backhaul_data(osjob_t *job)
     }
   }
   Serial.print(", ");
-  Serial.print(LMIC.rssi - RSSI_OFFSET);
+  Serial.print(LMIC.rssi);
   Serial.print(", ");
-  Serial.print(LMIC.snr / SNR_FACTOR);
+  Serial.print(LMIC.snr);
   Serial.print(", ");
   Serial.print(LMIC.sysname_crc_err);
   Serial.print("\n");
@@ -158,14 +159,16 @@ static void backhaul_data(osjob_t *job)
 static void backhaul_data_flash(osjob_t *job)
 {
   // Asynchronous backhaul job
+  flash_writer.print(""+os_getTime());
+  flash_writer.print(", ");
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
   {
     flash_writer.printf("%02X", LMIC.frame[ind]);
   }
   flash_writer.print(", ");
-  flash_writer.printf("%d", LMIC.rssi - RSSI_OFFSET);
+  flash_writer.printf("%d", LMIC.rssi);
   flash_writer.print(", ");
-  flash_writer.printf("%d", LMIC.snr / SNR_FACTOR);
+  flash_writer.printf("%d", LMIC.snr);
   flash_writer.print(", ");
   flash_writer.printf("%d", LMIC.sysname_crc_err);
   flash_writer.print("\n");
@@ -176,7 +179,11 @@ static void experiment_rxdone_func(osjob_t *job)
   // Arbiter
   os_setCallback(job, rx_func);
   // Backhaul
-  os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data_flash);
+  if (PRINT_TO_SERIAL == 1) {
+    os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data);
+  } else {
+     os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data_flash);
+  }
 }
 
 static void control_rxdone_func(osjob_t *job)
@@ -282,12 +289,12 @@ void setup()
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
   // blink to show reset
-  for (int i = 0; i < 20; i++)
+  for (int i = 0; i < 10; i++)
   {
     digitalWrite(LED_BUILTIN, LOW); // turn OFF
-    delay(200);
+    delay(500);
     digitalWrite(LED_BUILTIN, HIGH); // turn ON
-    delay(200);
+    delay(500);
   }
 
   // initialize runtime env

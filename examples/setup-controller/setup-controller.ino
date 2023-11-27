@@ -56,7 +56,8 @@ Author:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
 #define TRX_INTERVAL 20 // milliseconds
-#define FREQ_CNFG 917000000
+#define FREQ_CNFG 922000000
+#define FREQ_EXPT 920000000
 
 // Pin mapping
 #if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
@@ -112,7 +113,7 @@ static void tx_func(osjob_t *job);
 // Serial Buffer(s)
 byte buf_in[5];
 byte buf_out[5];
-byte reg_array[48];
+byte reg_array[200];
 u4_t freq_array[24];
 //
 
@@ -131,6 +132,24 @@ void tx(osjobcb_t func)
   LMIC.frame[1] = buf_out[2];
   LMIC.frame[2] = buf_out[3];
   LMIC.frame[3] = buf_out[4];
+  // set completion function.
+  LMIC.osjob.func = func;
+  // start the transmission
+  os_radio(RADIO_TX);
+}
+
+void tx_multi(osjobcb_t func)
+{
+  // the radio is probably in RX mode; stop it.
+  os_radio(RADIO_RST);
+  // wait a bit so the radio can come out of RX mode
+  delay(1);
+  // prepare data
+  LMIC.dataLen = 20;
+  LMIC.frame[0] = buf_in[1];;
+  LMIC.frame[1] = buf_in[2];
+  LMIC.frame[2] = buf_in[3];
+  LMIC.frame[3] = buf_in[4];;
   // set completion function.
   LMIC.osjob.func = func;
   // start the transmission
@@ -243,6 +262,13 @@ static void txdone_func(osjob_t *job)
   os_setCallback(job, rx_func);
 }
 
+static void txmultidone_func(osjob_t *job)
+{
+  LMIC.freq = FREQ_CNFG; // FREQ_CNFG; // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
+  os_setCallback(job, rx_func);
+}
+
 static void txdone_noack_func(osjob_t *job)
 {
   // Immediately go to arbiter
@@ -260,6 +286,13 @@ static void tx_func(osjob_t *job)
 {
   // Send BUF OUT
   tx(txdone_func);
+}
+
+static void tx_func_multi(osjob_t *job)
+{
+  LMIC.freq = FREQ_EXPT; // FREQ_CNFG; // WCSNG
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
+  tx_multi(txmultidone_func);
 }
 
 // log text to USART and toggle LED
@@ -311,7 +344,12 @@ static void arbiter_fn(osjob_t *job)
       buf_out[2] = buf_in[2];
       buf_out[3] = buf_in[3];
       buf_out[4] = buf_in[4];
-      os_setCallback(job, tx_func);
+
+      if ((buf_in[1] == 255) && (buf_in[2] == 9)) {
+        os_setCallback(job, tx_func_multi);
+      } else {
+        os_setCallback(job, tx_func);
+      }
       break;
     case 2:
       // Transmit Four Bytes and Stop
@@ -404,7 +442,7 @@ void setup()
 
   // disable RX IQ inversion
   LMIC.noRXIQinversion = true;
-  LMIC.freq = 922000000; // FREQ_CNFG; // WCSNG
+  LMIC.freq = FREQ_CNFG; // FREQ_CNFG; // WCSNG
   //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_tx_rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0);
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG

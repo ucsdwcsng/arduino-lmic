@@ -172,7 +172,7 @@ static void control_rxdone_func(osjob_t *job)
 
     //set timeout callback to stop sending free beacons
     experiment_time = reg_array[2] * reg_array[3];
-    experiment_type = reg_array[4] * reg_array[49];
+    experiment_type = reg_array[4] + reg_array[49];
     // Serial.print("Starting experiment, type:");
     // Serial.print(experiment_type);  
     // Serial.print(", time: ");

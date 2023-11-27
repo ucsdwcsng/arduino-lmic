@@ -111,7 +111,7 @@ static void interrupt_CAD_func(osjob_t *job) {
 
   u1_t isChanneFree = 0;
   while (isChanneFree == 0) {
-    isChanneFree = cadlora_fixedDIFS();
+    isChanneFree = cadlora_customSensing();
   }
   
   os_setCallback(job, tx_func);

@@ -1182,7 +1182,7 @@ uint8_t cadlora (){
     return 0;
 }
 
-u1_t cadlora_fixedDIFS (void) {
+u1_t cadlora_customSensing (void) {
 #if LMIC_DEBUG_LEVEL > 0
     LMIC_DEBUG_PRINTF("Starting sensing at %"LMIC_PRId_ostime_t"\n", os_getTime());
 #endif
@@ -1217,7 +1217,7 @@ u1_t cadlora_fixedDIFS (void) {
     LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
     LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
 
-    if ((detected_max_energy == 0) || (LMIC.sysname_is_FSMA_node == 1)) {
+    if ((detected_max_energy == 0) || (LMIC.sysname_is_FSMA_node == 1) || (LMIC.sysname_enable_cad_analysis == 1)) {
         LMIC.rps = LMIC.sysname_cad_rps;
         LMIC.freq = LMIC.sysname_cad_freq_vec[1];
 
@@ -1250,6 +1250,23 @@ u1_t cadlora_fixedDIFS (void) {
                     LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
                 #endif
                 clear_bit_CAD = 1;
+            }
+        }
+
+        if (LMIC.sysname_enable_cad_analysis == 1) { 
+            // read rx quality parameters for cad analysis
+            LMIC.sysname_cad_snr  = readReg(LORARegPktSnrValue); // SNR [dB] * 4
+            u1_t const rRssi = readReg(LORARegPktRssiValue);
+            LMIC.sysname_cad_rssi = rRssi;
+            if (LMIC.freq > SX127X_FREQ_LF_MAX)
+                LMIC.sysname_cad_rssi += SX127X_RSSI_ADJUST_HF;
+            else
+                LMIC.sysname_cad_rssi += SX127X_RSSI_ADJUST_LF;
+            if (LMIC.sysname_cad_snr < 0)
+                LMIC.sysname_cad_rssi = LMIC.sysname_cad_rssi - (-LMIC.sysname_cad_snr >> 2);
+            else if (LMIC.sysname_cad_rssi > -100) {
+                // correct nonlinearity -- this is the same as multiplying rRssi * 16/15 initially.
+                LMIC.sysname_cad_rssi += (rRssi / 15);
             }
         }
     }
@@ -1344,7 +1361,7 @@ uint8_t fsmacadlora(){
         //     variable_CAD_DIFS_multiplier = os_getRndU1() % max_CAD_DIFS_multiplier + 1;
         // } 
 
-        clear_bit = cadlora_fixedDIFS();
+        clear_bit = cadlora_customSensing();
         writeReg(LORARegIrqFlags, 0xFF);
 
         // For Gateway:  channel should be free (== 1) and  is not a node (== 0)

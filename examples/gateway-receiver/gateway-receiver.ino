@@ -135,28 +135,29 @@ void rx(osjobcb_t func)
   //  Serial.print("\n");
 }
 
-// static void backhaul_data(osjob_t *job)
-//{
-//   // Asynchronous backhaul job
-//   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
-//   {
-//     if (LMIC.frame[ind] > 15)
-//       Serial.print(LMIC.frame[ind], HEX);
-//     else
-//     {
-//       Serial.print("0");
-//       Serial.print(LMIC.frame[ind], HEX);
-//     }
-//   }
-//   Serial.print(", ");
-//   Serial.print(LMIC.rssi-RSSI_OFFSET);
-//   Serial.print(", ");
-//   Serial.print(LMIC.snr/SNR_FACTOR);
-//   Serial.print(", ");
-//   Serial.print(LMIC.sysname_crc_err);
-//   Serial.print("\n");
-// }
 static void backhaul_data(osjob_t *job)
+{
+  // Asynchronous backhaul job
+  for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
+  {
+    if (LMIC.frame[ind] > 15)
+      Serial.print(LMIC.frame[ind], HEX);
+    else
+    {
+      Serial.print("0");
+      Serial.print(LMIC.frame[ind], HEX);
+    }
+  }
+  Serial.print(", ");
+  Serial.print(LMIC.rssi - RSSI_OFFSET);
+  Serial.print(", ");
+  Serial.print(LMIC.snr / SNR_FACTOR);
+  Serial.print(", ");
+  Serial.print(LMIC.sysname_crc_err);
+  Serial.print("\n");
+}
+
+static void backhaul_data_flash(osjob_t *job)
 {
   // Asynchronous backhaul job
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
@@ -164,9 +165,9 @@ static void backhaul_data(osjob_t *job)
     flash_writer.printf("%02X", LMIC.frame[ind]);
   }
   flash_writer.print(", ");
-  flash_writer.printf("%d", LMIC.rssi);
+  flash_writer.printf("%d", LMIC.rssi - RSSI_OFFSET);
   flash_writer.print(", ");
-  flash_writer.printf("%d", LMIC.snr);
+  flash_writer.printf("%d", LMIC.snr / SNR_FACTOR);
   flash_writer.print(", ");
   flash_writer.printf("%d", LMIC.sysname_crc_err);
   flash_writer.print("\n");
@@ -177,7 +178,7 @@ static void experiment_rxdone_func(osjob_t *job)
   // Arbiter
   os_setCallback(job, rx_func);
   // Backhaul
-  os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data);
+  os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data_flash);
 }
 
 static void control_rxdone_func(osjob_t *job)
@@ -246,7 +247,6 @@ void wait_for_input_and_print()
   const unsigned long timeout = 10000; // 10 seconds in milliseconds
   bool inputReceived = false;
   unsigned long cur_time;
-  Serial.println("hi i'm here");
   startTime = millis(); // Record the start time
   while (true)
   {
@@ -260,12 +260,13 @@ void wait_for_input_and_print()
       String input = Serial.readStringUntil('\n');
       input.trim(); // Remove any trailing newline or carriage return characters
       inputReceived = true;
-      Serial.println("Reading all of flash...");
+      Serial.println("<Flash Read Begin>");
       FlashReader flash_reader = FlashReader();
       while (flash_reader.current_sector <= flash_reader.max_sector)
       {
         Serial.print(flash_reader.read());
       }
+      Serial.println("<Flash Read End>");
       break;
     }
     else if (cur_time >= timeout && !inputReceived)

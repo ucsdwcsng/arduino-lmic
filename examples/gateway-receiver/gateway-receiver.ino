@@ -36,7 +36,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-
+#include <rp2040_flash_datalogger.h>
 // we formerly would check this configuration; but now there is a flag,
 // in the LMIC, LMIC.noRXIQinversion;
 // if we set that during init, we get the same effect.  If
@@ -63,37 +63,37 @@
 #define FREQ_CNFG 922000000
 
 // Pin mapping Adafruit feather RP2040
-#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
-  .nss = 16,
-  .rxtx = LMIC_UNUSED_PIN,
-  .rst = 17,
-  .dio = { 21, 6, LMIC_UNUSED_PIN },
-  .rxtx_rx_active = 0,
-  .rssi_cal = 8,
-  .spi_freq = 8000000,
+    .nss = 16,
+    .rxtx = LMIC_UNUSED_PIN,
+    .rst = 17,
+    .dio = {21, 6, LMIC_UNUSED_PIN},
+    .rxtx_rx_active = 0,
+    .rssi_cal = 8,
+    .spi_freq = 8000000,
 };
 
 // Pin mapping Adafruit feather M0
-#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
-  .nss = 8,
-  .rxtx = LMIC_UNUSED_PIN,
-  .rst = 4,
-  .dio = { 3, 6, LMIC_UNUSED_PIN },
-  .rxtx_rx_active = 0,
-  .rssi_cal = 8,  // LBT cal for the Adafruit Feather M0 LoRa, in dB
-  .spi_freq = 8000000,
+    .nss = 8,
+    .rxtx = LMIC_UNUSED_PIN,
+    .rst = 4,
+    .dio = {3, 6, LMIC_UNUSED_PIN},
+    .rxtx_rx_active = 0,
+    .rssi_cal = 8, // LBT cal for the Adafruit Feather M0 LoRa, in dB
+    .spi_freq = 8000000,
 };
 #define VBATPIN A7
 
 #else
 // Pin mapping
 const lmic_pinmap lmic_pins = {
-  .nss = D10,
-  .rxtx = LMIC_UNUSED_PIN,
-  .rst = A0,
-  .dio = { 2, 3, 4 },
+    .nss = D10,
+    .rxtx = LMIC_UNUSED_PIN,
+    .rst = A0,
+    .dio = {2, 3, 4},
 };
 #endif
 
@@ -112,6 +112,8 @@ void onEvent(ev_t ev)
 }
 
 osjob_t arbiter_job, backhaul_job, timeout_job;
+FlashWriter flash_writer;
+
 u1_t experiment_status = 0, experiment_type = 0;
 int32_t experiment_time;
 byte reg_array[64];
@@ -145,12 +147,28 @@ static void backhaul_data(osjob_t *job)
     }
   }
   Serial.print(", ");
-  Serial.print(LMIC.rssi-RSSI_OFFSET);
+  Serial.print(LMIC.rssi - RSSI_OFFSET);
   Serial.print(", ");
-  Serial.print(LMIC.snr/SNR_FACTOR);
+  Serial.print(LMIC.snr / SNR_FACTOR);
   Serial.print(", ");
   Serial.print(LMIC.sysname_crc_err);
   Serial.print("\n");
+}
+
+static void backhaul_data_flash(osjob_t *job)
+{
+  // Asynchronous backhaul job
+  for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
+  {
+    flash_writer.printf("%02X", LMIC.frame[ind]);
+  }
+  flash_writer.print(", ");
+  flash_writer.printf("%d", LMIC.rssi - RSSI_OFFSET);
+  flash_writer.print(", ");
+  flash_writer.printf("%d", LMIC.snr / SNR_FACTOR);
+  flash_writer.print(", ");
+  flash_writer.printf("%d", LMIC.sysname_crc_err);
+  flash_writer.print("\n");
 }
 
 static void experiment_rxdone_func(osjob_t *job)
@@ -158,36 +176,38 @@ static void experiment_rxdone_func(osjob_t *job)
   // Arbiter
   os_setCallback(job, rx_func);
   // Backhaul
-  os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data);
+  os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data_flash);
 }
 
 static void control_rxdone_func(osjob_t *job)
 {
   // updated register values
-  if ((LMIC.frame[1] == 10) && (LMIC.frame[2] == 0)) {
+  if ((LMIC.frame[1] == 10) && (LMIC.frame[2] == 0))
+  {
     // set variables for experiment
     experiment_status = 1;
     LMIC.freq = FREQ_EXPT;
-    LMIC.rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0);  // WCSNG (Reverse of Node)
+    LMIC.rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0); // WCSNG (Reverse of Node)
 
-    //set timeout callback to stop sending free beacons
+    // set timeout callback to stop sending free beacons
     experiment_time = reg_array[2] * reg_array[3];
     experiment_type = reg_array[4] + reg_array[49];
     // Serial.print("Starting experiment, type:");
-    // Serial.print(experiment_type);  
+    // Serial.print(experiment_type);
     // Serial.print(", time: ");
     // Serial.print(experiment_time);
     // Serial.println("s + 10s");
     os_setTimedCallback(&timeout_job, os_getTime() + ms2osticks((experiment_time + 10) * 1000), experiment_timeout_func);
-  } 
-  else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19 ||  LMIC.frame[2] == 4  ||  LMIC.frame[2] == 49 )) {
+  }
+  else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19 || LMIC.frame[2] == 4 || LMIC.frame[2] == 49))
+  {
     reg_array[LMIC.frame[2]] = LMIC.frame[3];
     // Serial.print("Writing Reg: ");
     // Serial.print(LMIC.frame[2], HEX);
     // Serial.print(", Val: ");
     // Serial.print(LMIC.frame[3], HEX);
     // Serial.print("\n");
-  } 
+  }
 
   // Arbiter
   os_setCallback(job, rx_func);
@@ -196,15 +216,18 @@ static void control_rxdone_func(osjob_t *job)
 static void rx_func(osjob_t *job)
 {
   // GET BUF_OUT
-  if (experiment_status == 1) {
+  if (experiment_status == 1)
+  {
     rx(experiment_rxdone_func);
   }
-  else {
+  else
+  {
     rx(control_rxdone_func);
   }
 }
 
-static void experiment_timeout_func(osjob_t *job) {
+static void experiment_timeout_func(osjob_t *job)
+{
   // reset variables after experiment
   experiment_status = 0;
   LMIC.freq = FREQ_CNFG;
@@ -216,16 +239,54 @@ static void experiment_timeout_func(osjob_t *job) {
   os_setCallback(&timeout_job, rx_func);
 }
 
+void wait_for_input_and_print()
+{
+  unsigned long startTime;
+  const unsigned long timeout = 10000; // 10 seconds in milliseconds
+  bool inputReceived = false;
+  unsigned long cur_time;
+  startTime = millis(); // Record the start time
+  while (true)
+  {
+    digitalWrite(LED_BUILTIN, LOW); // turn OFF
+    delay(100);
+    digitalWrite(LED_BUILTIN, HIGH); // turn ON
+    delay(100);
+    cur_time = millis() - startTime;
+    if (Serial.available() > 0 && cur_time < timeout)
+    {
+      String input = Serial.readStringUntil('\n');
+      input.trim(); // Remove any trailing newline or carriage return characters
+      inputReceived = true;
+      Serial.println("<Flash Read Begin>");
+      FlashReader flash_reader = FlashReader();
+      while (flash_reader.current_sector <= flash_reader.max_sector)
+      {
+        Serial.print(flash_reader.read());
+      }
+      Serial.println("<Flash Read End>");
+      break;
+    }
+    else if (cur_time >= timeout && !inputReceived)
+    {
+      Serial.println("No input received within 10 seconds. Moving on...");
+      inputReceived = false;
+      break;
+    }
+  }
+}
+
 // application entry point
 void setup()
 {
-  Serial.begin(2000000);
+  Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
   // blink to show reset
-  for (int i = 0; i < 5; i++) {
-    digitalWrite(LED_BUILTIN, LOW);  // turn OFF
+  for (int i = 0; i < 20; i++)
+  {
+    digitalWrite(LED_BUILTIN, LOW); // turn OFF
     delay(200);
-    digitalWrite(LED_BUILTIN, HIGH);  // turn ON
+    digitalWrite(LED_BUILTIN, HIGH); // turn ON
     delay(200);
   }
 
@@ -241,29 +302,38 @@ void setup()
   LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21; // WCSNG
-  
+
   // setting default values in registers
-  reg_array[2] = 1;    // Experiment run length in seconds
-  reg_array[3] = 1;    // Time multiplier for expt time
-  reg_array[17] = 34;  // 17: {4bits txsf, 4bits rxsf}
-  reg_array[18] = 34;  // 18: {4bits txbw, 4bits rxbw}
-  reg_array[19] = 51;  // 19: {4bits txcr, 4bits txcr}
+  reg_array[2] = 1;   // Experiment run length in seconds
+  reg_array[3] = 1;   // Time multiplier for expt time
+  reg_array[17] = 34; // 17: {4bits txsf, 4bits rxsf}
+  reg_array[18] = 34; // 18: {4bits txbw, 4bits rxbw}
+  reg_array[19] = 51; // 19: {4bits txcr, 4bits txcr}
 
+  // asd
 
-  Serial.flush();
-  Serial.println("Hi, this is gateway rx");
-
-#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
   float measuredvbat = analogRead(VBATPIN);
-  measuredvbat *= 2;     // we divided by 2, so multiply back
-  measuredvbat *= 3.3;   // Multiply by 3.3V, our reference voltage
-  measuredvbat /= 1024;  // convert to voltage
+  measuredvbat *= 2;    // we divided by 2, so multiply back
+  measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
+  measuredvbat /= 1024; // convert to voltage
   Serial.print("VBat: ");
   Serial.println(measuredvbat);
-  float vbatPercent = (measuredvbat - 3.2) * 100;  // battery ranges from 3.2v to 4.2v
+  float vbatPercent = (measuredvbat - 3.2) * 100; // battery ranges from 3.2v to 4.2v
   Serial.print("VBat Percentage: ");
   Serial.println(vbatPercent);
 #endif
+
+  for (int i = 0; i < 20; i++)
+  {
+  }
+
+  wait_for_input_and_print();
+  Serial.println("Gateway rx initialized");
+  Serial.flush();
+
+  // Set up flash writer
+  flash_writer = FlashWriter();
 
   // setup initial job
   os_setCallback(&arbiter_job, rx_func);

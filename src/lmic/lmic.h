@@ -569,9 +569,12 @@ struct lmic_t {
     u1_t        sysname_enable_exponential_backoff;
     u1_t        sysname_enable_variable_cad_difs;
     u1_t        sysname_waittime_between_cads;
+    u1_t        sysname_enable_cad_analysis;
 
     s2_t        sysname_lbt_rssi_mean;
     s2_t        sysname_lbt_rssi_max;
+    s2_t        sysname_cad_snr;
+    s2_t        sysname_cad_rssi;
 #endif
 
 #if SYSNAME_TX_BTONE == 1

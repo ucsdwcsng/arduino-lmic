@@ -58,9 +58,10 @@ Author:
 #define TRX_INTERVAL 20 // milliseconds
 #define FREQ_CNFG 922000000
 #define FREQ_EXPT 920000000
+#define ADAFRUIT_FEATHER 1 // 1 - M0, 2 - RP2040 boards
 
 // Pin mapping
-#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,
@@ -70,7 +71,7 @@ const lmic_pinmap lmic_pins = {
   .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
   .spi_freq = 8000000,
 };
-#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#elif (ADAFRUIT_FEATHER == 1)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,

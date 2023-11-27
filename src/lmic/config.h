@@ -45,15 +45,13 @@
 // This is the SX1272/SX1273 radio, which is also used on the HopeRF
 // RFM92 boards.
 // #define CFG_sx1272_radio 1
-#ifndef ADAFRUIT_FEATHER_M0
-#define ADAFRUIT_FEATHER_M0 0
+
+// define adafruit feather type, 1 - M0, 2 -RP2040, 0 - not a feather board
+#ifndef ADAFRUIT_FEATHER
+#define ADAFRUIT_FEATHER 1
 #endif
 
-#ifndef ADAFRUIT_FEATHER_RP2040
-#define ADAFRUIT_FEATHER_RP2040 1
-#endif
-
-#if ((ADAFRUIT_FEATHER_M0 == 1) || (ADAFRUIT_FEATHER_RP2040 == 1))
+#if ((ADAFRUIT_FEATHER > 0))
 #define CFG_sx1276_radio 1
 #else
 #define CFG_sx1272_radio 1

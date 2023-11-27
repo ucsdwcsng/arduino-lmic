@@ -62,8 +62,6 @@
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
 
-#define ADAFRUIT_FEATHER_RP2040 1
-
 // Pin mapping Adafruit feather RP2040
 #if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {

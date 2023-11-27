@@ -62,9 +62,10 @@
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
 #define PRINT_TO_SERIAL 1
+#define ADAFRUIT_FEATHER 2
 
 // Pin mapping Adafruit feather RP2040
-#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER == 2) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
     .nss = 16,
     .rxtx = LMIC_UNUSED_PIN,
@@ -76,7 +77,7 @@ const lmic_pinmap lmic_pins = {
 };
 
 // Pin mapping Adafruit feather M0
-#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#elif (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
     .nss = 8,
     .rxtx = LMIC_UNUSED_PIN,
@@ -137,6 +138,9 @@ void rx(osjobcb_t func)
 static void backhaul_data(osjob_t *job)
 {
   // Asynchronous backhaul job
+  Serial.print(""+LMIC.rxtime);
+  Serial.print(", ");
+
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
   {
     if (LMIC.frame[ind] > 15)
@@ -159,8 +163,10 @@ static void backhaul_data(osjob_t *job)
 static void backhaul_data_flash(osjob_t *job)
 {
   // Asynchronous backhaul job
-  flash_writer.print(""+os_getTime());
+  // flash_writer.print(""+os_getTime());
+  flash_writer.print(""+LMIC.rxtime);
   flash_writer.print(", ");
+
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
   {
     flash_writer.printf("%02X", LMIC.frame[ind]);
@@ -174,7 +180,7 @@ static void backhaul_data_flash(osjob_t *job)
   flash_writer.print("\n");
 }
 
-static void experiment_rxdone_func(osjob_t *job)
+static void rxdone_func(osjob_t *job)
 {
   // Arbiter
   os_setCallback(job, rx_func);
@@ -186,64 +192,9 @@ static void experiment_rxdone_func(osjob_t *job)
   }
 }
 
-static void control_rxdone_func(osjob_t *job)
-{
-  // updated register values
-  if ((LMIC.frame[1] == 10) && (LMIC.frame[2] == 0))
-  {
-    // set variables for experiment
-    experiment_status = 1;
-    LMIC.freq = FREQ_EXPT;
-    LMIC.rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0); // WCSNG (Reverse of Node)
-
-    // set timeout callback to stop sending free beacons
-    experiment_time = reg_array[2] * reg_array[3];
-    experiment_type = reg_array[4] + reg_array[49];
-    // Serial.print("Starting experiment, type:");
-    // Serial.print(experiment_type);
-    // Serial.print(", time: ");
-    // Serial.print(experiment_time);
-    // Serial.println("s + 10s");
-    os_setTimedCallback(&timeout_job, os_getTime() + ms2osticks((experiment_time + 10) * 1000), experiment_timeout_func);
-  }
-  else if ((LMIC.frame[1] == 2) && (LMIC.frame[2] == 2 || LMIC.frame[2] == 3 || LMIC.frame[2] == 17 || LMIC.frame[2] == 18 || LMIC.frame[2] == 19 || LMIC.frame[2] == 4 || LMIC.frame[2] == 49))
-  {
-    reg_array[LMIC.frame[2]] = LMIC.frame[3];
-    // Serial.print("Writing Reg: ");
-    // Serial.print(LMIC.frame[2], HEX);
-    // Serial.print(", Val: ");
-    // Serial.print(LMIC.frame[3], HEX);
-    // Serial.print("\n");
-  }
-
-  // Arbiter
-  os_setCallback(job, rx_func);
-}
-
 static void rx_func(osjob_t *job)
 {
-  // GET BUF_OUT
-  if (experiment_status == 1)
-  {
-    rx(experiment_rxdone_func);
-  }
-  else
-  {
-    rx(control_rxdone_func);
-  }
-}
-
-static void experiment_timeout_func(osjob_t *job)
-{
-  // reset variables after experiment
-  experiment_status = 0;
-  LMIC.freq = FREQ_CNFG;
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
-
-  // Serial.println("Experiment timedout ...");
-  radio_init();
-  os_radio(RADIO_RST);
-  os_setCallback(&timeout_job, rx_func);
+  rx(rxdone_func);
 }
 
 void wait_for_input_and_print()
@@ -300,26 +251,7 @@ void setup()
   // initialize runtime env
   os_init();
 
-  // disable RX IQ inversion
-  LMIC.noRXIQinversion = true;
-  LMIC.freq = FREQ_CNFG; // WCSNG
-  // MAKERPS(SF8 , BW500, CR_4_8, 0, 0)
-  // MAKERPS(SF7 , BW500, CR_4_5, 0, 0)
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
-  LMIC.txpow = 21;
-  LMIC.radio_txpow = 21; // WCSNG
-
-  // setting default values in registers
-  reg_array[2] = 1;   // Experiment run length in seconds
-  reg_array[3] = 1;   // Time multiplier for expt time
-  reg_array[17] = 34; // 17: {4bits txsf, 4bits rxsf}
-  reg_array[18] = 34; // 18: {4bits txbw, 4bits rxbw}
-  reg_array[19] = 51; // 19: {4bits txcr, 4bits txcr}
-
-  // asd
-
-#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1)) // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
   float measuredvbat = analogRead(VBATPIN);
   measuredvbat *= 2;    // we divided by 2, so multiply back
   measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
@@ -331,9 +263,15 @@ void setup()
   Serial.println(vbatPercent);
 #endif
 
-  for (int i = 0; i < 20; i++)
-  {
-  }
+  // disable RX IQ inversion
+  LMIC.noRXIQinversion = true;
+  LMIC.freq = FREQ_EXPT; // WCSNG
+  // MAKERPS(SF8 , BW500, CR_4_8, 0, 0)
+  // MAKERPS(SF7 , BW500, CR_4_5, 0, 0)
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
+  LMIC.txpow = 21;
+  LMIC.radio_txpow = 21; // WCSNG
 
   wait_for_input_and_print();
   Serial.println("Gateway rx initialized");

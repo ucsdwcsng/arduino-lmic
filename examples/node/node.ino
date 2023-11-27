@@ -61,9 +61,10 @@
 #define FREQ_EXPT 915000000
 #define FREQ_CNFG 917000000
 #define RB_LEN 65
+#define ADAFRUIT_FEATHER 1
 
 // Pin mapping
-#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,
@@ -74,7 +75,7 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#elif (ADAFRUIT_FEATHER == 1)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 8,
   .rxtx = LMIC_UNUSED_PIN,
@@ -150,8 +151,9 @@ byte buf_tx[16];
 // 23: Kill CAD Wait time (0 or 1)
 //---------------------------------
 
-// 24--44 - Node Idx
-// 54--64 - Node Idx
+// 24--44 - Node Idx (changed)
+// 54--64 - Node Idx (changed)
+//101-200 - Node Idx
 //---------------------------------
 
 // 45: periodic_tx_variance (x10 ms)
@@ -903,14 +905,14 @@ void setup()
   LMIC.sysname_enable_variable_cad_difs = 0;
   LMIC.sysname_waittime_between_cads = 2; // in ms
 
-  for (byte idx = 0; idx < 20; idx++)
-    reg_array[24 + idx] = RSSI_RESET_VAL;
+  for (byte idx = 0; idx < 100; idx++)
+    reg_array[101 + idx] = RSSI_RESET_VAL;
 
   buf_in[0] == 0;
   buf_in[1] == 0;
   buf_in[2] == 0;
 
-#if (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER == 1)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
   float measuredvbat = analogRead(VBATPIN);
   measuredvbat *= 2;     // we divided by 2, so multiply back
   measuredvbat *= 3.3;   // Multiply by 3.3V, our reference voltage

@@ -55,13 +55,12 @@ Author:
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define TRX_INTERVAL 20 // milliseconds
+#define TRX_INTERVAL 20  // milliseconds
 #define FREQ_CNFG 922000000
 #define FREQ_EXPT 920000000
-#define ADAFRUIT_FEATHER 1 // 1 - M0, 2 - RP2040 boards
+#define ADAFRUIT_FEATHER 2  // 1 - M0, 2 - RP2040 boards
 
-// Pin mapping
-#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,
@@ -71,16 +70,18 @@ const lmic_pinmap lmic_pins = {
   .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
   .spi_freq = 8000000,
 };
+
 #elif (ADAFRUIT_FEATHER == 1)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
-  .nss = 16,
+  .nss = 8,
   .rxtx = LMIC_UNUSED_PIN,
-  .rst = 17,
-  .dio = { 21, 6, LMIC_UNUSED_PIN },
+  .rst = 4,
+  .dio = { 3, 6, LMIC_UNUSED_PIN },
   .rxtx_rx_active = 0,
   .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
   .spi_freq = 8000000,
 };
+
 #else
 // Pin mapping
 const lmic_pinmap lmic_pins = {
@@ -101,8 +102,7 @@ void os_getDevKey(u1_t *buf) {}
 
 // this gets callled by the library but we choose not to display any info;
 // and no action is required.
-void onEvent(ev_t ev)
-{
+void onEvent(ev_t ev) {
 }
 
 osjob_t txjob;
@@ -119,13 +119,12 @@ u4_t freq_array[24];
 //
 
 // Transmit the given string and call the given function afterwards
-void tx(osjobcb_t func)
-{
+void tx(osjobcb_t func) {
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
   delay(1);
-  digitalWrite(LED_BUILTIN, LOW); // turn OFF
+  digitalWrite(LED_BUILTIN, LOW);  // turn OFF
 
   // prepare data
   LMIC.dataLen = 4;
@@ -139,20 +138,21 @@ void tx(osjobcb_t func)
   os_radio(RADIO_TX);
 }
 
-void tx_multi(osjobcb_t func)
-{
+void tx_multi(osjobcb_t func) {
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
   delay(1);
-  digitalWrite(LED_BUILTIN, LOW); // turn OFF
+  digitalWrite(LED_BUILTIN, LOW);  // turn OFF
 
   // prepare data
   LMIC.dataLen = 20;
-  LMIC.frame[0] = buf_in[1];;
+  LMIC.frame[0] = buf_in[1];
+  ;
   LMIC.frame[1] = buf_in[2];
   LMIC.frame[2] = buf_in[3];
-  LMIC.frame[3] = buf_in[4];;
+  LMIC.frame[3] = buf_in[4];
+  ;
   // set completion function.
   LMIC.osjob.func = func;
   // start the transmission
@@ -160,17 +160,15 @@ void tx_multi(osjobcb_t func)
 }
 
 // Enable rx mode and call func when a packet is received
-void rx(osjobcb_t func)
-{
+void rx(osjobcb_t func) {
   LMIC.osjob.func = func;
-  LMIC.rxtime = os_getTime(); // RX _now_
+  LMIC.rxtime = os_getTime();  // RX _now_
   // Enable "continuous" RX (e.g. without a timeout, still stops after
   // receiving a packet)
   os_radio(RADIO_RXON);
 }
 
-static void rxtimeout_func(osjob_t *job)
-{
+static void rxtimeout_func(osjob_t *job) {
   // The radio is probably in Rx Mode, kill it;
   os_radio(RADIO_RST);
   delay(1);
@@ -186,22 +184,18 @@ static void rxtimeout_func(osjob_t *job)
   os_setCallback(&txjob, arbiter_fn);
 }
 
-static void rxdone_func(osjob_t *job)
-{
+static void rxdone_func(osjob_t *job) {
   // Unlink the timeout job if you receive
   os_clearCallback(&timeoutjob);
 
-  if (!LMIC.sysname_crc_err)
-  {
+  if (!LMIC.sysname_crc_err) {
     buf_out[0] = 1;
     buf_out[1] = LMIC.frame[0];
     buf_out[2] = LMIC.frame[1];
     buf_out[3] = LMIC.frame[2];
     buf_out[4] = LMIC.frame[3];
     reg_array[buf_out[1]] = LMIC.rssi;
-  }
-  else
-  {
+  } else {
     buf_out[0] = 1;
     buf_out[1] = 255;
     buf_out[2] = 255;
@@ -214,15 +208,13 @@ static void rxdone_func(osjob_t *job)
   os_setCallback(job, arbiter_fn);
 }
 
-static void rx_func(osjob_t *job)
-{
+static void rx_func(osjob_t *job) {
   // GET BUF_OUT
   os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks(10 * TRX_INTERVAL), rxtimeout_func);
   rx(rxdone_func);
 }
 
-static void rxdone2_func(osjob_t *job)
-{
+static void rxdone2_func(osjob_t *job) {
   // Unlink the timeout job if you receive
   os_clearCallback(&timeoutjob);
   reg_array[LMIC.frame[0]] = LMIC.rssi;
@@ -232,8 +224,7 @@ static void rxdone2_func(osjob_t *job)
   os_setCallback(job, arbiter_fn);
 }
 
-static void rxdone3_func(osjob_t *job)
-{
+static void rxdone3_func(osjob_t *job) {
   // Unlink the timeout job if you receive
   os_clearCallback(&timeoutjob);
   reg_array[LMIC.frame[0]] = LMIC.rssi;
@@ -243,79 +234,68 @@ static void rxdone3_func(osjob_t *job)
   os_setCallback(job, rx3_func);
 }
 
-static void rx2_func(osjob_t *job)
-{
+static void rx2_func(osjob_t *job) {
   // This one is for arbitrary Rx.
   os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks(10 * TRX_INTERVAL), rxtimeout_func);
   rx(rxdone2_func);
 }
 
-static void rx3_func(osjob_t *job)
-{
+static void rx3_func(osjob_t *job) {
   // This one is for arbitrary nbyte Rx.
   os_setTimedCallback(&timeoutjob, os_getTime() + ms2osticks(20 * TRX_INTERVAL), rxtimeout_func);
   rx(rxdone3_func);
 }
 
-static void txdone_func(osjob_t *job)
-{
-  digitalWrite(LED_BUILTIN, HIGH); // turn ON
+static void txdone_func(osjob_t *job) {
+  digitalWrite(LED_BUILTIN, HIGH);  // turn ON
 
   // Immediately start listening
   os_setCallback(job, rx_func);
 }
 
-static void txmultidone_func(osjob_t *job)
-{
-  digitalWrite(LED_BUILTIN, HIGH); // turn ON
+static void txmultidone_func(osjob_t *job) {
+  digitalWrite(LED_BUILTIN, HIGH);  // turn ON
 
-  LMIC.freq = FREQ_CNFG; // FREQ_CNFG; // WCSNG
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.freq = FREQ_CNFG;                         // FREQ_CNFG; // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
   os_setCallback(job, rx_func);
 }
 
-static void txdone_noack_func(osjob_t *job)
-{
+static void txdone_noack_func(osjob_t *job) {
   // Immediately go to arbiter
   os_setCallback(job, arbiter_fn);
 }
 
-static void txdone_mass_read(osjob_t *job)
-{
+static void txdone_mass_read(osjob_t *job) {
   // Immediately go to rx3
   os_setCallback(job, rx3_func);
 }
 
 // log text to USART and toggle LED
-static void tx_func(osjob_t *job)
-{
+static void tx_func(osjob_t *job) {
   // Send BUF OUT
   tx(txdone_func);
 }
 
-static void tx_func_multi(osjob_t *job)
-{
-  LMIC.freq = FREQ_EXPT; // FREQ_CNFG; // WCSNG
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
+static void tx_func_multi(osjob_t *job) {
+  LMIC.freq = FREQ_EXPT;                          // FREQ_CNFG; // WCSNG
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
   tx_multi(txmultidone_func);
 }
 
 // log text to USART and toggle LED
-static void tx_func_mass_read(osjob_t *job)
-{
+static void tx_func_mass_read(osjob_t *job) {
   // Send BUF OUT
   tx(txdone_mass_read);
 }
 
 // log text to USART and toggle LED
-static void tx_func_noack(osjob_t *job)
-{
+static void tx_func_noack(osjob_t *job) {
   // Send BUF OUT
   tx(txdone_noack_func);
 }
 
-static void arbiter_fn(osjob_t *job)
-{
+static void arbiter_fn(osjob_t *job) {
 
   // Three bytes for buf_in
   // byte 0    : Command to arbiter
@@ -323,140 +303,148 @@ static void arbiter_fn(osjob_t *job)
   // byte 2    : Command to Node
   // byte 3    : Register
   // byte 4    : Value
-  if ((Serial.available() >= 5))
-  {
+  if ((Serial.available() >= 5)) {
+    // for (int i=0; i<5; i++) {
+    //   buf_in[i] = Serial.read();
+    // }
     Serial.readBytes(buf_in, 5);
-    switch (buf_in[0])
-    {
-    case 0:
-      // Signal Gateway Alive
-      buf_in[0] = 0;
-      buf_in[1] = 0;
-      buf_in[2] = 0;
-      buf_in[3] = 0;
-      buf_in[4] = 0;
-      buf_out[0] = 0;
-      buf_out[1] = 0;
-      buf_out[2] = 0;
-      buf_out[3] = 0;
-      buf_out[4] = 0;
-      Serial.write(buf_out, 5);
-      os_setCallback(job, arbiter_fn);
-      break;
-    case 1:
-      // Transmit Four Bytes and Get Ack
-      buf_out[1] = buf_in[1];
-      buf_out[2] = buf_in[2];
-      buf_out[3] = buf_in[3];
-      buf_out[4] = buf_in[4];
+    Serial.print(buf_in[0]);
+    Serial.print(",");
+    Serial.print(buf_in[1]);
+    Serial.print(",");
+    Serial.print(buf_in[2]);
+    Serial.print(",");
+    Serial.print(buf_in[3]);
+    Serial.print(",");
+    Serial.print(buf_in[4]);
+    
+    switch (buf_in[0]) {
+      case 0:
+        // Signal Gateway Alive
+        buf_in[0] = 0;
+        buf_in[1] = 0;
+        buf_in[2] = 0;
+        buf_in[3] = 0;
+        buf_in[4] = 0;
+        buf_out[0] = 0;
+        buf_out[1] = 0;
+        buf_out[2] = 0;
+        buf_out[3] = 0;
+        buf_out[4] = 0;
+        Serial.write(buf_out, 5);
+        os_setCallback(job, arbiter_fn);
+        break;
+      case 1:
+        // Transmit Four Bytes and Get Ack
+        buf_out[1] = buf_in[1];
+        buf_out[2] = buf_in[2];
+        buf_out[3] = buf_in[3];
+        buf_out[4] = buf_in[4];
 
-      if ((buf_in[1] == 255) && (buf_in[2] == 9)) {
-        os_setCallback(job, tx_func_multi);
-      } else {
-        os_setCallback(job, tx_func);
-      }
-      break;
-    case 2:
-      // Transmit Four Bytes and Stop
-      buf_out[1] = buf_in[1];
-      buf_out[2] = buf_in[2];
-      buf_out[3] = buf_in[3];
-      buf_out[4] = buf_in[4];
-      os_setCallback(job, tx_func_noack);
-      break;
-    case 3:
-      // Receive Some Bytes and Stop
-      os_setCallback(job, rx2_func);
-      break;
-    case 4:
-      // Readback registers from trx gateway
-      buf_out[0] = 4;
-      buf_out[1] = buf_in[1];
-      buf_out[2] = 0;
-      buf_out[3] = 0;
-      buf_out[4] = reg_array[buf_in[1]];
-      buf_in[0] = 0;
-      buf_in[1] = 0;
-      buf_in[2] = 0;
-      buf_in[3] = 0;
-      buf_in[4] = 0;
-      Serial.write(buf_out, 5);
-      os_setCallback(job, arbiter_fn);
-      break;
-    case 5:
-      // Retune the gateway
-      LMIC.freq = freq_array[buf_in[1]];
-      buf_out[0] = 5;
-      buf_out[1] = buf_in[1];
-      buf_out[2] = 0;
-      buf_out[3] = 0;
-      buf_out[4] = 0;
-      buf_in[0] = 0;
-      buf_in[1] = 0;
-      buf_in[2] = 0;
-      buf_in[3] = 0;
-      buf_in[4] = 0;
-      Serial.write(buf_out, 5);
-      os_setCallback(job, arbiter_fn);
-      break;
-    case 6:
-      // Transmit, then
-      // Receive Continuously till an Rx timeout
-      buf_out[1] = buf_in[1];
-      buf_out[2] = buf_in[2];
-      buf_out[3] = buf_in[3];
-      buf_out[4] = buf_in[4];
-      os_setCallback(job, tx_func_mass_read);
-      break;
-    default:
-      buf_in[0] = 0;
-      buf_in[1] = 0;
-      buf_in[2] = 0;
-      buf_in[3] = 0;
-      buf_in[4] = 0;
-      buf_out[0] = 0;
-      buf_out[1] = 0;
-      buf_out[2] = 0;
-      buf_out[3] = 0;
-      buf_out[4] = 0;
-      Serial.write(buf_out, 5);
-      os_setCallback(job, arbiter_fn);
+        if ((buf_in[1] == 255) && (buf_in[2] == 9)) {
+          os_setCallback(job, tx_func_multi);
+        } else {
+          os_setCallback(job, tx_func);
+        }
+        break;
+      case 2:
+        // Transmit Four Bytes and Stop
+        buf_out[1] = buf_in[1];
+        buf_out[2] = buf_in[2];
+        buf_out[3] = buf_in[3];
+        buf_out[4] = buf_in[4];
+        os_setCallback(job, tx_func_noack);
+        break;
+      case 3:
+        // Receive Some Bytes and Stop
+        os_setCallback(job, rx2_func);
+        break;
+      case 4:
+        // Readback registers from trx gateway
+        buf_out[0] = 4;
+        buf_out[1] = buf_in[1];
+        buf_out[2] = 0;
+        buf_out[3] = 0;
+        buf_out[4] = reg_array[buf_in[1]];
+        buf_in[0] = 0;
+        buf_in[1] = 0;
+        buf_in[2] = 0;
+        buf_in[3] = 0;
+        buf_in[4] = 0;
+        Serial.write(buf_out, 5);
+        os_setCallback(job, arbiter_fn);
+        break;
+      case 5:
+        // Retune the gateway
+        LMIC.freq = freq_array[buf_in[1]];
+        buf_out[0] = 5;
+        buf_out[1] = buf_in[1];
+        buf_out[2] = 0;
+        buf_out[3] = 0;
+        buf_out[4] = 0;
+        buf_in[0] = 0;
+        buf_in[1] = 0;
+        buf_in[2] = 0;
+        buf_in[3] = 0;
+        buf_in[4] = 0;
+        Serial.write(buf_out, 5);
+        os_setCallback(job, arbiter_fn);
+        break;
+      case 6:
+        // Transmit, then
+        // Receive Continuously till an Rx timeout
+        buf_out[1] = buf_in[1];
+        buf_out[2] = buf_in[2];
+        buf_out[3] = buf_in[3];
+        buf_out[4] = buf_in[4];
+        os_setCallback(job, tx_func_mass_read);
+        break;
+      default:
+        buf_in[0] = 0;
+        buf_in[1] = 0;
+        buf_in[2] = 0;
+        buf_in[3] = 0;
+        buf_in[4] = 0;
+        buf_out[0] = 0;
+        buf_out[1] = 0;
+        buf_out[2] = 0;
+        buf_out[3] = 0;
+        buf_out[4] = 0;
+        Serial.write(buf_out, 5);
+        os_setCallback(job, arbiter_fn);
     }
-  }
-  else
-  {
+  } else {
     os_setCallback(job, arbiter_fn);
   }
 }
 
 // application entry point
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
-  
+
   // blink to show reset
-  for(int i=0; i<5; i++) {
-    digitalWrite(LED_BUILTIN, LOW); // turn OFF
+  for (int i = 0; i < 5; i++) {
+    digitalWrite(LED_BUILTIN, LOW);  // turn OFF
     delay(200);
-    digitalWrite(LED_BUILTIN, HIGH); // turn ON
+    digitalWrite(LED_BUILTIN, HIGH);  // turn ON
     delay(200);
   }
 
   os_init();
 
-  // disable RX IQ inversion
-  LMIC.noRXIQinversion = true;
-  LMIC.freq = FREQ_CNFG; // FREQ_CNFG; // WCSNG
-  //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
-  //  LMIC.sysname_tx_rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0);
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
-  LMIC.txpow = 21;
-  LMIC.radio_txpow = 21; // WCSNG
-
   Serial.flush();
   Serial.println("Hi, this is controller");
+
+  // disable RX IQ inversion
+  LMIC.noRXIQinversion = true;
+  LMIC.freq = FREQ_CNFG;  // FREQ_CNFG; // WCSNG
+  //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
+  //  LMIC.sysname_tx_rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0);
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
+  LMIC.txpow = 21;
+  LMIC.radio_txpow = 21;  // WCSNG
 
   // Setup Registers
   buf_in[0] == 0;
@@ -475,8 +463,7 @@ void setup()
   os_setCallback(&txjob, arbiter_fn);
 }
 
-void loop()
-{
+void loop() {
   // execute scheduled jobs and events
   os_runloop_once();
 }

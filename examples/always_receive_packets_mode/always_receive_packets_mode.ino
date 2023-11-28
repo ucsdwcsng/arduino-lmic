@@ -136,7 +136,7 @@ byte buf_tx[16];
 //enum _sf_t { FSK=0, SF7, SF8, SF9, SF10, SF11, SF12, SFrfu };
 //enum _bw_t { BW125=0, BW250, BW500, BWrfu };
 
-byte reg_array[64];
+byte reg_array[200];
 ostime_t interarrival_array[2048];
 u4_t interarrival_ind;
 ostime_t expt_start_time, expt_stop_time; // 1ms is 62.5 os ticks

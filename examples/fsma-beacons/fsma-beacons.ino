@@ -67,7 +67,7 @@ void os_getDevEui(u1_t *buf) {}
 void os_getDevKey(u1_t *buf) {}
 
 osjob_t arbiter_job, interrupt_job, sleep_job, timeoutjob;
-byte reg_array[64];
+byte reg_array[200];
 ostime_t expt_start_time, expt_stop_time;  // 1ms is 62.5 os ticks
 int32_t experiment_time;
 

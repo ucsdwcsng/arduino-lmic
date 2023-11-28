@@ -142,9 +142,6 @@ static void backhaul_data(osjob_t *job)
   Serial.print(buffer);
   Serial.print(", ");
   // Asynchronous backhaul job
-  Serial.print(""+LMIC.rxtime);
-  Serial.print(", ");
-
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
   {
     if (LMIC.frame[ind] > 15)
@@ -169,10 +166,6 @@ static void backhaul_data_flash(osjob_t *job)
   flash_writer.printf("%d", millis()/1000);
   flash_writer.print(", ");
   // Asynchronous backhaul job
-  // flash_writer.print(""+os_getTime());
-  flash_writer.print(""+LMIC.rxtime);
-  flash_writer.print(", ");
-
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
   {
     flash_writer.printf("%02X", LMIC.frame[ind]);

@@ -151,11 +151,10 @@ void tx_multi(osjobcb_t func)
   // prepare data
   LMIC.dataLen = 20;
   LMIC.frame[0] = buf_in[1];
-  ;
   LMIC.frame[1] = buf_in[2];
   LMIC.frame[2] = buf_in[3];
   LMIC.frame[3] = buf_in[4];
-  ;
+
   // set completion function.
   LMIC.osjob.func = func;
   // start the transmission
@@ -313,16 +312,6 @@ static void arbiter_fn(osjob_t *job) {
     //   buf_in[i] = Serial.read();
     // }
     Serial.readBytes(buf_in, 5);
-    Serial.print(buf_in[0]);
-    Serial.print(",");
-    Serial.print(buf_in[1]);
-    Serial.print(",");
-    Serial.print(buf_in[2]);
-    Serial.print(",");
-    Serial.print(buf_in[3]);
-    Serial.print(",");
-    Serial.print(buf_in[4]);
-    
     switch (buf_in[0]) {
       case 0:
         // Signal Gateway Alive

@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 30
+#define NODE_IDX 102
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -644,6 +644,8 @@ static void arbiter_fn(osjob_t *job)
       buf_out[3] = reg_array[buf_in[2]];
       Serial.print("Reading Reg: ");
       Serial.print(buf_in[2], HEX);
+      Serial.print(", value: ");
+      Serial.print(buf_out[3]);
       Serial.print("\n");
       arbiter_state = 0;
       os_setCallback(job, tx_func);
@@ -694,8 +696,8 @@ static void arbiter_fn(osjob_t *job)
     case 4:
       // Signal Alive With the RSSI
       buf_out[0] = NODE_IDX;
-      buf_out[1] = 0;
-      buf_out[2] = 0;
+      buf_out[1] = 4;
+      buf_out[2] = buf_in[2];
       buf_out[3] = LMIC.rssi;
       // Save the receive RSSI in the reg_array
       reg_array[NODE_IDX] = LMIC.rssi;
@@ -706,7 +708,7 @@ static void arbiter_fn(osjob_t *job)
     case 5:
       // Read Register and Replace Value with Request
       buf_out[0] = NODE_IDX;
-      buf_out[1] = 2;
+      buf_out[1] = 5;
       buf_out[2] = buf_in[2];
       buf_out[3] = reg_array[buf_in[2]];
       // Write Reg buf_in[2] with buf_in[3];
@@ -723,7 +725,7 @@ static void arbiter_fn(osjob_t *job)
       // This thing triggers time-stamp readback
       buf_out[0] = NODE_IDX;
       buf_out[1] = 20;
-      buf_out[2] = 255;
+      buf_out[2] = buf_in[2];
       buf_out[3] = 255;
       Serial.println("Timestamp Readback!");
       arbiter_state = 20;
@@ -733,7 +735,7 @@ static void arbiter_fn(osjob_t *job)
       // Start Continuous Tx
       buf_out[0] = NODE_IDX;
       buf_out[1] = 10;
-      buf_out[2] = 255;
+      buf_out[2] = buf_in[2];     
       buf_out[3] = 255;
       arbiter_state = 10;
       Serial.println("Continuous Tx Trigger!");

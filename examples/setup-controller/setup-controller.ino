@@ -58,37 +58,40 @@ Author:
 #define TRX_INTERVAL 20  // milliseconds
 #define FREQ_CNFG 922000000
 #define FREQ_EXPT 920000000
-#define ADAFRUIT_FEATHER 2  // 1 - M0, 2 - RP2040 boards
+#define ADAFRUIT_FEATHER 2
 
-#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040.
+// Pin mapping
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
 const lmic_pinmap lmic_pins = {
-  .nss = 16,
-  .rxtx = LMIC_UNUSED_PIN,
-  .rst = 17,
-  .dio = { 21, 6, LMIC_UNUSED_PIN },
-  .rxtx_rx_active = 0,
-  .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
-  .spi_freq = 8000000,
+    .nss = 16,
+    .rxtx = LMIC_UNUSED_PIN,
+    .rst = 17,
+    .dio = {21, 6, LMIC_UNUSED_PIN},
+    .rxtx_rx_active = 0,
+    .rssi_cal = 8,
+    .spi_freq = 8000000,
 };
 
-#elif (ADAFRUIT_FEATHER == 1)  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+// Pin mapping Adafruit feather M0
+#elif (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
-  .nss = 8,
-  .rxtx = LMIC_UNUSED_PIN,
-  .rst = 4,
-  .dio = { 3, 6, LMIC_UNUSED_PIN },
-  .rxtx_rx_active = 0,
-  .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
-  .spi_freq = 8000000,
+    .nss = 8,
+    .rxtx = LMIC_UNUSED_PIN,
+    .rst = 4,
+    .dio = {3, 6, LMIC_UNUSED_PIN},
+    .rxtx_rx_active = 0,
+    .rssi_cal = 8, // LBT cal for the Adafruit Feather M0 LoRa, in dB
+    .spi_freq = 8000000,
 };
+#define VBATPIN A7
 
 #else
 // Pin mapping
 const lmic_pinmap lmic_pins = {
-  .nss = D10,
-  .rxtx = LMIC_UNUSED_PIN,
-  .rst = A0,
-  .dio = { 2, 3, 4 },
+    .nss = D10,
+    .rxtx = LMIC_UNUSED_PIN,
+    .rst = A0,
+    .dio = {2, 3, 4},
 };
 #endif
 
@@ -138,8 +141,8 @@ void tx(osjobcb_t func) {
   os_radio(RADIO_TX);
 }
 
-void tx_multi(osjobcb_t func) {
-  // the radio is probably in RX mode; stop it.
+void tx_multi(osjobcb_t func)
+{
   os_radio(RADIO_RST);
   // wait a bit so the radio can come out of RX mode
   delay(1);
@@ -253,11 +256,11 @@ static void txdone_func(osjob_t *job) {
   os_setCallback(job, rx_func);
 }
 
-static void txmultidone_func(osjob_t *job) {
-  digitalWrite(LED_BUILTIN, HIGH);  // turn ON
-
-  LMIC.freq = FREQ_CNFG;                         // FREQ_CNFG; // WCSNG
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
+static void txmultidone_func(osjob_t *job)
+{
+  LMIC.freq = FREQ_CNFG; // FREQ_CNFG; // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps= MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
   os_setCallback(job, rx_func);
 }
 
@@ -277,9 +280,11 @@ static void tx_func(osjob_t *job) {
   tx(txdone_func);
 }
 
-static void tx_func_multi(osjob_t *job) {
-  LMIC.freq = FREQ_EXPT;                          // FREQ_CNFG; // WCSNG
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
+static void tx_func_multi(osjob_t *job)
+{
+  LMIC.freq = FREQ_EXPT; // FREQ_CNFG; // WCSNG
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps= MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
   tx_multi(txmultidone_func);
 }
 

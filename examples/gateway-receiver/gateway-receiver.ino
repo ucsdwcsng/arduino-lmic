@@ -61,11 +61,11 @@
 #define RSSI_OFFSET 64
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
-#define PRINT_TO_SERIAL 1
+#define PRINT_TO_SERIAL 0 // 1 prints on serial, else in memory
 #define ADAFRUIT_FEATHER 2
 
-// Pin mapping Adafruit feather RP2040
-#if (ADAFRUIT_FEATHER == 2) // Pin mapping for Adafruit Feather M0 LoRa, etc.
+// Pin mapping
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
 const lmic_pinmap lmic_pins = {
     .nss = 16,
     .rxtx = LMIC_UNUSED_PIN,
@@ -118,7 +118,7 @@ FlashWriter flash_writer;
 
 u1_t experiment_status = 0, experiment_type = 0;
 int32_t experiment_time;
-byte reg_array[64];
+byte reg_array[200];
 
 // Enable rx mode and call func when a packet is received
 void rx(osjobcb_t func)
@@ -137,6 +137,10 @@ void rx(osjobcb_t func)
 
 static void backhaul_data(osjob_t *job)
 {
+  char buffer[10];
+  sprintf(buffer, "%d", millis()/1000);  
+  Serial.print(buffer);
+  Serial.print(", ");
   // Asynchronous backhaul job
   Serial.print(""+LMIC.rxtime);
   Serial.print(", ");
@@ -162,6 +166,8 @@ static void backhaul_data(osjob_t *job)
 
 static void backhaul_data_flash(osjob_t *job)
 {
+  flash_writer.printf("%d", millis()/1000);
+  flash_writer.print(", ");
   // Asynchronous backhaul job
   // flash_writer.print(""+os_getTime());
   flash_writer.print(""+LMIC.rxtime);
@@ -185,10 +191,11 @@ static void rxdone_func(osjob_t *job)
   // Arbiter
   os_setCallback(job, rx_func);
   // Backhaul
-  if (PRINT_TO_SERIAL == 1) {
+  if (PRINT_TO_SERIAL == 1){
     os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data);
-  } else {
-     os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data_flash);
+  }
+  else {
+    os_setTimedCallback(&backhaul_job, os_getTime() + 100, backhaul_data_flash);
   }
 }
 
@@ -251,6 +258,16 @@ void setup()
   // initialize runtime env
   os_init();
 
+  // disable RX IQ inversion
+  LMIC.noRXIQinversion = true;
+  LMIC.freq = FREQ_EXPT; // WCSNG
+  // MAKERPS(SF8 , BW500, CR_4_8, 0, 0)
+  // MAKERPS(SF7 , BW500, CR_4_5, 0, 0)
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);
+  LMIC.txpow = 21;
+  LMIC.radio_txpow = 21; // WCSNG
+
 #if (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
   float measuredvbat = analogRead(VBATPIN);
   measuredvbat *= 2;    // we divided by 2, so multiply back
@@ -262,16 +279,6 @@ void setup()
   Serial.print("VBat Percentage: ");
   Serial.println(vbatPercent);
 #endif
-
-  // disable RX IQ inversion
-  LMIC.noRXIQinversion = true;
-  LMIC.freq = FREQ_EXPT; // WCSNG
-  // MAKERPS(SF8 , BW500, CR_4_8, 0, 0)
-  // MAKERPS(SF7 , BW500, CR_4_5, 0, 0)
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
-  LMIC.txpow = 21;
-  LMIC.radio_txpow = 21; // WCSNG
 
   wait_for_input_and_print();
   Serial.println("Gateway rx initialized");

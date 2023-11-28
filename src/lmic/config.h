@@ -51,7 +51,7 @@
 #define ADAFRUIT_FEATHER 1
 #endif
 
-#if ((ADAFRUIT_FEATHER > 0))
+#if (ADAFRUIT_FEATHER > 0)
 #define CFG_sx1276_radio 1
 #else
 #define CFG_sx1272_radio 1

@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 102
+#define NODE_IDX 126
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -162,6 +162,10 @@ byte buf_tx[16];
 // 47: Result - LBT Counter Byte 1
 // 48: Result - LBT Counter Byte 2
 
+// 52: Result - LBT Counter Byte 0
+// 53: Result - LBT Counter Byte 1
+// 54: Result - LBT Counter Byte 2
+
 //-------------- FSMA --------------
 // 49: Enable FSMA
 // 50: Listen before talk min RSSI s1_t
@@ -187,6 +191,8 @@ u4_t multi_tx_packet_ctr;
 u4_t global_cad_counter;
 u4_t global_cad_detect_counter;
 u4_t global_lbt_counter;
+u4_t global_wait_time_counter;
+u4_t packet_start_time;
 //
 
 // Transmit the given string and call the given function afterwards
@@ -231,6 +237,7 @@ void tx_multi(osjobcb_t func)
   // set completion function.
   LMIC.osjob.func = func;
   // start the transmission
+  packet_start_time = os_getTime();
   os_radio(RADIO_TX);
 }
 
@@ -269,7 +276,7 @@ static void experiment_timeout_func(osjob_t *job) {
   global_cad_counter = global_cad_counter + LMIC.sysname_cad_counter;
   global_lbt_counter = global_lbt_counter + LMIC.sysname_lbt_counter;
   global_cad_detect_counter = global_cad_detect_counter + LMIC.sysname_cad_detect_counter;
-
+  global_wait_time_counter = global_wait_time_counter + (os_getTime() - packet_start_time);
   os_setCallback(&arbiter_job, timed_executor);
 }
 
@@ -339,6 +346,7 @@ static void txmultidone_func(osjob_t *job)
   global_cad_counter = global_cad_counter + LMIC.sysname_cad_counter;
   global_lbt_counter = global_lbt_counter + LMIC.sysname_lbt_counter;
   global_cad_detect_counter = global_cad_detect_counter + LMIC.sysname_cad_detect_counter;
+  global_wait_time_counter = global_wait_time_counter + (os_getTime() - packet_start_time);
 
   interarrival_array[interarrival_ind] = os_getTime();
   interarrival_ind++;
@@ -413,6 +421,7 @@ static void prepare_multi_tx()
   global_cad_counter = 0;
   global_cad_detect_counter = 0;
   global_lbt_counter = 0;
+  global_wait_time_counter= 0;
   // Load CAD State
   LMIC.sysname_enable_cad = reg_array[4];
   // Load DIFS number
@@ -468,6 +477,9 @@ static void store_multitx_results()
   reg_array[47] = get_nth_byte(global_lbt_counter, 1);
   reg_array[48] = get_nth_byte(global_lbt_counter, 2);
 
+  reg_array[52] = get_nth_byte(global_wait_time_counter, 0);
+  reg_array[53] = get_nth_byte(global_wait_time_counter, 1);
+  reg_array[54] = get_nth_byte(global_wait_time_counter, 2);
   //  reg_array[46] = get_nth_byte(global_cad_detect_counter, 0);
   //  reg_array[47] = get_nth_byte(global_cad_detect_counter, 1);
   //  reg_array[48] = get_nth_byte(global_cad_detect_counter, 2);
@@ -797,6 +809,7 @@ static void arbiter_fn(osjob_t *job)
       expt_start_time = os_getTime();
       experiment_time = reg_array[2] * reg_array[3];
       expt_stop_time = expt_start_time + ms2osticks(experiment_time * 1000);
+      LMIC.sysname_experiment_timeout = expt_stop_time;
       interarrival_array[interarrival_ind] = expt_start_time;
       interarrival_ind++;
 
@@ -877,22 +890,22 @@ void setup()
   multi_tx_packet_ctr = 0; // Resetting counter
 
   reg_array[0] = 90; // tx_interval
-  reg_array[1] = 16; // Packet Size Bytes
+  reg_array[1] = 20; // Packet Size Bytes
   reg_array[2] = 1; // Experiment run length in seconds
   reg_array[3] = 1;  // Time multiplier for expt time
   reg_array[4] = 0;  // Enable CAD - OFF by default
-  reg_array[5] = 8;  // DIFS as number of CADs
-  reg_array[6] = 12; // Backoff Unit in ms (backoff cnfg 1)
-  reg_array[7] = 4;  // Max Backoff Unit Multiplier length (backoff cnfg 2)
+  reg_array[5] = 9;  // DIFS as number of CADs
+  reg_array[6] = 5; // Backoff Unit in ms (backoff cnfg 1)
+  reg_array[7] = 100;  // Max Backoff Unit Multiplier length (backoff cnfg 2)
   reg_array[8] = 1;  // tx_interval_multiplier
-  reg_array[9] = 0;  // scheduler_interval_mode (0: Periodic, 1: Poisson, 2: Periodic with Variance);
+  reg_array[9] = 1;  // scheduler_interval_mode (0: Periodic, 1: Poisson, 2: Periodic with Variance);
 
-  reg_array[17] = 34; // 17: {4bits txsf, 4bits rxsf}
-  reg_array[18] = 34; // 18: {4bits txbw, 4bits rxbw}
+  reg_array[17] = 66; // 17: {4bits txsf, 4bits rxsf}
+  reg_array[18] = 0; // 18: {4bits txbw, 4bits rxbw}
   reg_array[19] = 51; // 19: {4bits txcr, 4bits txcr}
 
   reg_array[20] = 0;   // CAD Type and Config Reg
-  reg_array[21] = 0;   // Listen before talk ticks (x16)
+  reg_array[21] = 8;   // Listen before talk ticks (x16)
   reg_array[22] = -90; // Listen before talk max RSSI s1_t
   reg_array[23] = 1;   // Kill CAD Wait time (0 or 1)
 
@@ -901,7 +914,7 @@ void setup()
   
   // FSMA
   reg_array[49] = 0; // Diasble FSMA  
-  reg_array[50] = -116; // Listen before talk min RSSI s1_T
+  reg_array[50] = -120; // Listen before talk min RSSI s1_T
   reg_array[51] = 0; // Disable exponential backoff
   LMIC.sysname_is_FSMA_node = 1;
   LMIC.sysname_enable_variable_cad_difs = 0;

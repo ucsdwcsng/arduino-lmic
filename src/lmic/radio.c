@@ -1353,6 +1353,7 @@ uint8_t fsmacadlora(){
     u2_t max_CAD_DIFS_multiplier = 10;
     uint8_t clear_bit = 0;
     uint8_t tx_condition = 0;
+    ostime_t backoff_sleep_time = 0;
 
     while (!tx_condition) {
         
@@ -1378,7 +1379,13 @@ uint8_t fsmacadlora(){
             }
             exponent_backoff_multiplier = (exponent_count+1)*LMIC.sysname_backoff_cfg2;
             cur_backoff = os_getRndU1() % exponent_backoff_multiplier + 1;
-            hal_waitUntil(os_getTime() + ms2osticks(cur_backoff*LMIC.sysname_backoff_cfg1));
+            backoff_sleep_time = os_getTime() + ms2osticks(cur_backoff*LMIC.sysname_backoff_cfg1);
+
+            if (backoff_sleep_time <= LMIC.sysname_experiment_timeout) {
+                hal_waitUntil(backoff_sleep_time);
+            } else {
+                break;
+            }
         }
 
         if(!tx_condition && (LMIC.sysname_is_FSMA_node == 0)){

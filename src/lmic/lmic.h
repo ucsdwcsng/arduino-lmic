@@ -575,6 +575,7 @@ struct lmic_t {
     s2_t        sysname_lbt_rssi_max;
     s2_t        sysname_cad_snr;
     s2_t        sysname_cad_rssi;
+    ostime_t    sysname_experiment_timeout;
 #endif
 
 #if SYSNAME_TX_BTONE == 1

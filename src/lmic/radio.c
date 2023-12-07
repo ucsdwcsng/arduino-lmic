@@ -1314,7 +1314,7 @@ u1_t cadlora_customSensing (void) {
     if (LMIC.sysname_is_FSMA_node == 0) {
         clear_status = (detected_max_energy == 0) && (clear_bit_CAD == 1);
     } else {
-        clear_status = (clear_bit_CAD == 1) || (detected_min_energy == 0);
+        clear_status = (clear_bit_CAD == 1);
     }
 
 #if LMIC_DEBUG_LEVEL > 0

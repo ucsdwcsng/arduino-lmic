@@ -61,8 +61,10 @@
 #define RSSI_OFFSET 64
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
-#define PRINT_TO_SERIAL 0 // 1 prints on serial, else in memory
+#define SF_TYPE SF8 
+#define PRINT_TO_SERIAL 1 // 1 prints on serial, else in memory
 #define ADAFRUIT_FEATHER 2
+
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
@@ -137,10 +139,10 @@ void rx(osjobcb_t func)
 
 static void backhaul_data(osjob_t *job)
 {
-  char buffer[10];
-  sprintf(buffer, "%d", millis()/1000);  
-  Serial.print(buffer);
-  Serial.print(", ");
+  // char buffer[10];
+  // sprintf(buffer, "%d", millis()/1000);  
+  // Serial.print(buffer);
+  // Serial.print(", ");
   // Asynchronous backhaul job
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
   {
@@ -163,8 +165,6 @@ static void backhaul_data(osjob_t *job)
 
 static void backhaul_data_flash(osjob_t *job)
 {
-  flash_writer.printf("%d", millis()/1000);
-  flash_writer.print(", ");
   // Asynchronous backhaul job
   for (u2_t ind = 0; ind < LMIC.dataLen; ind++)
   {
@@ -176,6 +176,8 @@ static void backhaul_data_flash(osjob_t *job)
   flash_writer.printf("%d", LMIC.snr);
   flash_writer.print(", ");
   flash_writer.printf("%d", LMIC.sysname_crc_err);
+  flash_writer.print(", ");
+  flash_writer.printf("%d", millis()/1000);
   flash_writer.print("\n");
 }
 
@@ -256,8 +258,8 @@ void setup()
   LMIC.freq = FREQ_EXPT; // WCSNG
   // MAKERPS(SF8 , BW500, CR_4_8, 0, 0)
   // MAKERPS(SF7 , BW500, CR_4_5, 0, 0)
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);
+  LMIC.rps = MAKERPS(SF_TYPE, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF_TYPE, BW125, CR_4_8, 0, 0);
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21; // WCSNG
 
@@ -276,6 +278,12 @@ void setup()
   wait_for_input_and_print();
   Serial.println("Gateway rx initialized");
   Serial.flush();
+
+#if (PRINT_TO_SERIAL == 1)
+  Serial.println("Printing to serial monitor!");
+#else
+  Serial.println("Printing to memory!");
+#endif
 
   // Set up flash writer
   flash_writer = FlashWriter();

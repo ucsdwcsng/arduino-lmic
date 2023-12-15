@@ -7,12 +7,14 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define ENABLE_CAD_SF 8
-#define DELAY_TIME 20
-#define TOTAL_CADS 2000
+#define ENABLE_CAD_SF 8 // SF: 8, 9, 10, 11, 12
+#define SYMBOL_TIME 2.048*(ENABLE_CAD_SF-7)
+#define DELAY_TIME 9*SYMBOL_TIME
+#define TOTAL_CADS 10000
+#define ADAFRUIT_FEATHER 2
 
 // Pin mapping
-#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,
@@ -23,7 +25,7 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#elif (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 8,
   .rxtx = LMIC_UNUSED_PIN,

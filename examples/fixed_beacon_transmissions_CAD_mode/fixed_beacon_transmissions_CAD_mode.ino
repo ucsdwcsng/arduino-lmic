@@ -14,10 +14,12 @@
 #define BEACON_SYMBOLS 10
 #define VBATPIN A7
 #define TOTAL_TRANSMISSIONS 1000
-#define DELAY_TIME 20
+#define DELAY_TIME 50
+#define RADIO_TX_POWER 21
+#define ADAFRUIT_FEATHER 2
 
-// Pin mapping Adafruit feather RP2040
-#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+// Pin mapping
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,
@@ -32,7 +34,7 @@ int32_t interrupt_timer = us2osticks(10000 + 2048 * 1);  //SF-8, DIFS-1
 // int32_t interrupt_timer = us2osticks(5600 + 2048 * 1);  //SF-8, DIFS-1
 
 // Pin mapping Adafruit feather M0
-#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#elif (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
   .nss = 8,
   .rxtx = LMIC_UNUSED_PIN,
@@ -44,7 +46,6 @@ const lmic_pinmap lmic_pins = {
 };
 
 int32_t interrupt_timer = us2osticks(16800 + 2048 * BEACON_SYMBOLS);
-int32_t transmit_symbols;
 
 // int32_t interrupt_timer = us2osticks(1000 + 2048);
 
@@ -74,9 +75,11 @@ osjob_t arbiter_job, interrupt_job, sleep_job, timeoutjob;
 byte reg_array[64];
 ostime_t expt_start_time, expt_stop_time;  // 1ms is 62.5 os ticks
 int32_t experiment_time;
+int32_t transmit_symbols = 0;
 
 #if (defined(INTERRUPT_CAD) && (INTERRUPT_CAD == 1))
-int32_t interrupt_cad_timer = us2osticks(1100 + 2048 * BEACON_SYMBOLS);
+// int32_t interrupt_cad_timer = us2osticks(1000 + 2048 * BEACON_SYMBOLS);
+int32_t interrupt_cad_timer = us2osticks(2048 * BEACON_SYMBOLS);
 #endif
 
 void tx(osjobcb_t func) {
@@ -118,7 +121,7 @@ static void interrupt_CAD_func(osjob_t *job) {
   //   isChanneFree = cadlora_customSensing();
   // }
 
-  // Serial.println("Inside interrupt fn ...");
+  // Serial.println("Inside CAD interrupt fn ...");
   hal_pin_rst(0);                                 // drive RST pin low
   hal_waitUntil(os_getTime() + us2osticks(200));  // wait >100us
   hal_pin_rst(2);                                 // configure RST pin floating!
@@ -237,8 +240,8 @@ static void intialize() {
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
   LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);    // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
-  LMIC.txpow = -4;
-  LMIC.radio_txpow = -4;  // WCSNG
+  LMIC.txpow = RADIO_TX_POWER;
+  LMIC.radio_txpow = RADIO_TX_POWER;  // WCSNG
 
   // Set the LMIC CAD Frequencies
   LMIC.freq = 922000000;                     // WCSNG

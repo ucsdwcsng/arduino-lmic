@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 101
+#define NODE_IDX 126
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -170,6 +170,8 @@ byte buf_tx[16];
 // 49: Enable FSMA
 // 50: Listen before talk min RSSI s1_t
 // 51: Enable Exponential backoff
+// 52: Enable inband CAD
+// 53: RPS of inband CAD type (1 - same as CAD, 2 - same as tx)
 
 // For Ref
 // enum _cr_t { CR_4_5=0, CR_4_6, CR_4_7, CR_4_8 };
@@ -453,6 +455,14 @@ static void prepare_multi_tx()
   LMIC.sysname_tx_rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0);  // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0); // WCSNG
 
+  LMIC.sysname_enable_inband_cad = reg_array[52];
+  if (reg_array[53] == 1) {
+    LMIC.sysname_inband_cad_rps = LMIC.sysname_cad_rps;
+  } else if (reg_array[53] == 2) {
+    LMIC.sysname_inband_cad_rps = LMIC.sysname_tx_rps;
+  }
+  LMIC.sysname_FSMA_beacon_symbols = reg_array[54];
+
   // Clearing the interrarival index counter
   interarrival_ind = 0;
 }
@@ -487,8 +497,9 @@ static void store_multitx_results()
   // Resetting Freq and RPS
   LMIC.freq = trx_freq_vec[freq_cnfg_ind];      // WCSNG
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
-  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
+  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
+  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
 
   // Resetting CAD State
   LMIC.sysname_enable_cad = 0;
@@ -862,8 +873,8 @@ void setup()
   //  LMIC.sysname_tx_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);             // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
-  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);  // WCSNG
+  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0); // WCSNG
   LMIC.txpow = -2;
   LMIC.radio_txpow = -5; // WCSNG
   LMIC.adrTxPow = -3;
@@ -902,7 +913,8 @@ void setup()
 
   reg_array[17] = 66; // 17: {4bits txsf, 4bits rxsf}
   reg_array[18] = 0; // 18: {4bits txbw, 4bits rxbw}
-  reg_array[19] = 51; // 19: {4bits txcr, 4bits txcr}
+  // reg_array[19] = 51; // 19: {4bits txcr, 4bits rxcr}
+  reg_array[19] = 0; // 19: {4bits txcr, 4bits rxcr}
 
   reg_array[20] = 0;   // CAD Type and Config Reg
   reg_array[21] = 8;   // Listen before talk ticks (x16)
@@ -916,9 +928,16 @@ void setup()
   reg_array[49] = 0; // Diasble FSMA  
   reg_array[50] = -150; // Listen before talk min RSSI s1_T
   reg_array[51] = 0; // Disable exponential backoff
+  reg_array[52] = 1; // enable inband CAD
+  reg_array[53] = 2; // RPS of inband CAD
+  reg_array[54] = 1; // beacon symbols
+
   LMIC.sysname_is_FSMA_node = 1;
   LMIC.sysname_enable_variable_cad_difs = 0;
   LMIC.sysname_waittime_between_cads = 2; // in ms
+  LMIC.sysname_FSMA_beacon_symbols = 1;
+  LMIC.sysname_enable_inband_cad = 1;
+  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
 
   for (byte idx = 0; idx < 100; idx++)
     reg_array[101 + idx] = RSSI_RESET_VAL;

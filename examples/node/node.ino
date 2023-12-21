@@ -151,8 +151,11 @@ byte buf_tx[16];
 // 23: Kill CAD Wait time (0 or 1)
 //---------------------------------
 
+// 24: Transmit power range - 4 to 21 dBm
+
 // 24--44 - Node Idx (changed)
 // 54--64 - Node Idx (changed)
+
 //101-200 - Node Idx
 //---------------------------------
 
@@ -170,8 +173,9 @@ byte buf_tx[16];
 // 49: Enable FSMA
 // 50: Listen before talk min RSSI s1_t
 // 51: Enable Exponential backoff
-// 52: Enable inband CAD
-// 53: RPS of inband CAD type (1 - same as CAD, 2 - same as tx)
+// 55: Enable inband CAD
+// 56: RPS of inband CAD type (1 - same as CAD, 2 - same as tx)
+// 57: FSMA beacon symbols
 
 // For Ref
 // enum _cr_t { CR_4_5=0, CR_4_6, CR_4_7, CR_4_8 };
@@ -184,6 +188,7 @@ u4_t interarrival_ind;
 ostime_t expt_start_time, expt_stop_time; // 1ms is 62.5 os ticks
 int experiment_time;
 int arbiter_state;
+int experiment_tx_power;
 u4_t scheduler_list_ms[SCHEDULE_LEN];
 
 u1_t freq_expt_ind, freq_cad_ind, freq_cnfg_ind;
@@ -223,8 +228,8 @@ void tx(osjobcb_t func)
 void tx_multi(osjobcb_t func)
 {
   // set transmit power
-  LMIC.txpow = -2;
-  LMIC.radio_txpow = -4; // WCSNG
+  LMIC.txpow = experiment_tx_power;
+  LMIC.radio_txpow = experiment_tx_power; // WCSNG
 
   // the radio is probably in RX mode; stop it.
   os_radio(RADIO_RST);
@@ -456,13 +461,21 @@ static void prepare_multi_tx()
   LMIC.sysname_cad_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0); // WCSNG
   LMIC.sysname_inband_cad_rps = 
 
-  LMIC.sysname_enable_inband_cad = reg_array[52];
-  if (reg_array[53] == 1) {
+  LMIC.sysname_enable_inband_cad = reg_array[55];
+  if (reg_array[56] == 1) {
     LMIC.sysname_inband_cad_rps = LMIC.sysname_cad_rps;
-  } else if (reg_array[53] == 2) {
+  } else if (reg_array[56] == 2) {
     LMIC.sysname_inband_cad_rps = LMIC.sysname_tx_rps;
   }
-  LMIC.sysname_FSMA_beacon_symbols = reg_array[54];
+  LMIC.sysname_FSMA_beacon_symbols = reg_array[57];
+
+  if (experiment_tx_power != (int8_t) reg_array[24]) {
+    Serial.print("Transmitting power (in dBm) is changed from ");
+    Serial.print(experiment_tx_power);
+    experiment_tx_power = (int8_t) reg_array[24];
+    Serial.print(", to ");
+    Serial.println(experiment_tx_power);
+  }
 
   // Clearing the interrarival index counter
   interarrival_ind = 0;
@@ -883,12 +896,12 @@ void setup()
   // Set the generic TRX frequencies:
   for (byte idx = 0; idx < 24; idx++)
   {
-    trx_freq_vec[idx] = 904000000 + ((u4_t)idx) * 1000000;
+    trx_freq_vec[idx] = 900000000 + ((u4_t)idx) * 1000000;
   }
 
-  freq_cad_ind = 14;
-  freq_expt_ind = 16;
-  freq_cnfg_ind = 18; // 13
+  freq_cad_ind = 18;
+  freq_expt_ind = 20;
+  freq_cnfg_ind = 22; // 13
   // Set the LMIC CAD Frequencies
   LMIC.freq = trx_freq_vec[freq_cnfg_ind]; // WCSNG
   LMIC.sysname_cad_freq_vec[0] = trx_freq_vec[freq_expt_ind];
@@ -929,9 +942,9 @@ void setup()
   reg_array[49] = 0; // Diasble FSMA  
   reg_array[50] = -150; // Listen before talk min RSSI s1_T
   reg_array[51] = 0; // Disable exponential backoff
-  reg_array[52] = 1; // enable inband CAD
-  reg_array[53] = 2; // RPS of inband CAD
-  reg_array[54] = 1; // beacon symbols
+  reg_array[55] = 1; // enable inband CAD
+  reg_array[56] = 2; // RPS of inband CAD
+  reg_array[57] = 1; // beacon symbols
 
   LMIC.sysname_is_FSMA_node = 1;
   LMIC.sysname_enable_variable_cad_difs = 0;

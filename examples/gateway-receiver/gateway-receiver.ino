@@ -61,10 +61,11 @@
 #define RSSI_OFFSET 64
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
-#define SF_TYPE SF8 
+#define SF_TYPE SF10 
+#define CR_TYPE CR_4_5
 #define PRINT_TO_SERIAL 1 // 1 prints on serial, else in memory
 #define ADAFRUIT_FEATHER 2
-
+// check LMIC_DEBUG_LEVEL
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
@@ -256,10 +257,10 @@ void setup()
   // disable RX IQ inversion
   LMIC.noRXIQinversion = true;
   LMIC.freq = FREQ_EXPT; // WCSNG
-  // MAKERPS(SF8 , BW500, CR_4_8, 0, 0)
-  // MAKERPS(SF7 , BW500, CR_4_5, 0, 0)
-  LMIC.rps = MAKERPS(SF_TYPE, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF_TYPE, BW125, CR_4_8, 0, 0);
+  // MAKERPS(SF8 , BW500, CR_TYPE, 0, 0)
+  // MAKERPS(SF7 , BW500, CR_TYPE, 0, 0)
+  LMIC.rps = MAKERPS(SF_TYPE, BW125, CR_TYPE, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF_TYPE, BW125, CR_TYPE, 0, 0);
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21; // WCSNG
 

@@ -59,6 +59,8 @@ Author:
 #define FREQ_CNFG 922000000
 #define FREQ_EXPT 920000000
 #define ADAFRUIT_FEATHER 2
+#define CR_TYPE CR_4_8
+#define TX_CR_TYPE CR_4_5
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
@@ -258,8 +260,8 @@ static void txdone_func(osjob_t *job) {
 static void txmultidone_func(osjob_t *job)
 {
   LMIC.freq = FREQ_CNFG; // FREQ_CNFG; // WCSNG
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps= MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_TYPE, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps= MAKERPS(SF8, BW125, CR_TYPE, 0, 0); // WCSNG
   os_setCallback(job, rx_func);
 }
 
@@ -282,8 +284,8 @@ static void tx_func(osjob_t *job) {
 static void tx_func_multi(osjob_t *job)
 {
   LMIC.freq = FREQ_EXPT; // FREQ_CNFG; // WCSNG
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps= MAKERPS(SF10, BW125, CR_4_8, 0, 0); // WCSNG
+  LMIC.rps = MAKERPS(SF10, BW125, TX_CR_TYPE, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps= MAKERPS(SF10, BW125, TX_CR_TYPE, 0, 0); // WCSNG
   tx_multi(txmultidone_func);
 }
 
@@ -433,10 +435,10 @@ void setup() {
   // disable RX IQ inversion
   LMIC.noRXIQinversion = true;
   LMIC.freq = FREQ_CNFG;  // FREQ_CNFG; // WCSNG
-  //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
-  //  LMIC.sysname_tx_rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0);
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
+  //  LMIC.rps = MAKERPS(SF8 , BW500, CR_TYPE, 0, 0); // WCSNG
+  //  LMIC.sysname_tx_rps = MAKERPS(SF8 , BW500, CR_TYPE, 0, 0);
+  LMIC.rps = MAKERPS(SF8, BW125, CR_TYPE, 0, 0);  // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_TYPE, 0, 0);
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21;  // WCSNG
 

@@ -1233,6 +1233,9 @@ u1_t cadlora_customSensing (void) {
 
         // for multiple (beacon) symbols
         while (detected_CAD == 1 && beacon_symbols_cnt > 0) {
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("Checking for symbol :%d\n", LMIC.sysname_FSMA_beacon_symbols-beacon_symbols_cnt+1);
+        #endif
             detected_CAD = doCAD();
             
             // if CAD detected -- channel is busy
@@ -1263,12 +1266,25 @@ u1_t cadlora_customSensing (void) {
         }
     }
 
-    if (LMIC.sysname_is_FSMA_node == 1 && LMIC.sysname_enable_inband_cad == 1) {
+    // for node, false positive check / inband cad
+    if (LMIC.sysname_is_FSMA_node == 1 && detected_CAD == 1) {
+
         // wait for few ms
         hal_waitUntil(os_getTime() + ms2osticks(LMIC.sysname_waittime_between_cads));
 
         LMIC.rps = LMIC.sysname_inband_cad_rps;
-        LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+        if ( LMIC.sysname_enable_inband_cad == 0 &&  LMIC.sysname_enable_inband_cad == 2) {
+            LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("Checking for in Band CAD\n");
+            #endif
+        } else {
+            LMIC.freq = LMIC.sysname_cad_freq_vec[1];
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("Checking for false positive CAD\n");
+            #endif
+        }
+
         // doing CAD 
         configCAD();
 
@@ -1276,9 +1292,9 @@ u1_t cadlora_customSensing (void) {
     }
 
     if (LMIC.sysname_is_FSMA_node == 0) {
-        isChannelFree = (detected_max_energy == 0) && (check_CAD == 0) && (detected_CAD == 0);
+        isChannelFree = (detected_max_energy == 0) && (detected_CAD == 0);
     } else {
-        isChannelFree = (check_CAD == 0) && (detected_CAD == 0);
+        isChannelFree = (check_CAD == 1) || (detected_CAD == 0);
     }
     // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
     #if LMIC_DEBUG_LEVEL > 0

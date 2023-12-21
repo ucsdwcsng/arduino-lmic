@@ -11,8 +11,8 @@
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
 #define INTERRUPT_CAD 1
-#define BEACON_SYMBOLS 1
-#define SYMBOL_TIME 8192//2048
+#define BEACON_SYMBOLS 2
+#define SYMBOL_TIME 2048
 #define VBATPIN A7
 #define ADAFRUIT_FEATHER 2
 
@@ -198,7 +198,7 @@ static void rx_func(osjob_t *job) {
 static void experiment_timeout_func(osjob_t *job) {
   // resetting to control params
   LMIC.freq = FREQ_CNFG;
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);               // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
 
   Serial.println("Experiment timeout function triggered...");
   radio_init();
@@ -215,8 +215,8 @@ static void intialize() {
   //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_tx_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
-  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);               // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);    // WCSNG
+  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);    // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
   LMIC.txpow = 30;
   LMIC.radio_txpow = 30;  // WCSNG
@@ -242,6 +242,9 @@ static void intialize() {
   LMIC.sysname_is_FSMA_node = 0;
   LMIC.sysname_enable_exponential_backoff = 0;
   LMIC.sysname_enable_variable_cad_difs = 0;
+  LMIC.sysname_FSMA_beacon_symbols = 2;
+  // LMIC.sysname_enable_inband_cad = 1;
+  // LMIC.sysname_inband_cad_rps = MAKERPS(SF10, BW125, CR_4_5, 0, 0);
 
   LMIC.lbt_ticks = 8;
   LMIC.sysname_cad_difs = 1;

@@ -1288,8 +1288,8 @@ u1_t cadlora_customSensing (void) {
     return isChannelFree;
 }
 
-uint8_t doCAD(){
-    uint8_t detected_CAD; // clear_bit from CAD
+u1_t doCAD(){
+    u1_t detected_CAD; // clear_bit from CAD
 
     // clear all radio IRQ flags
     writeReg(LORARegIrqFlags, 0xFF);
@@ -1313,7 +1313,9 @@ uint8_t doCAD(){
             LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
         #endif
         detected_CAD = 0;
-    }   
+    }  
+
+    return detected_CAD; 
 }
 
 uint8_t fsmacadlora(){ 

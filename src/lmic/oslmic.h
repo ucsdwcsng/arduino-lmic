@@ -116,6 +116,7 @@ void os_runloop (void);
 void os_runloop_once (void);
 u1_t radio_rssi (void);
 u1_t cadlora_customSensing (void);
+u1_t doCAD (void);
 void radio_monitor_rssi(ostime_t n, oslmic_radio_rssi_t *pRssi);
 
 //================================================================================

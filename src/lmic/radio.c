@@ -1188,11 +1188,11 @@ u1_t cadlora_customSensing (void) {
 #endif
 
     // intializing clear bit - gives channel status
-    uint8_t detected_min_energy = 0; // min energy to avoid false positives
+    uint8_t detected_CAD = 0; // min energy to avoid false positives
     uint8_t detected_max_energy = 0; // max energy to detect as threshold
-    uint8_t clear_bit_CAD = 1; // clear_bit from CAD
-    uint8_t check_bit_CAD = 0; // to check 
-    uint8_t clear_status = 0;
+    uint8_t isChannelFree = 1; // clear_bit from CAD
+    uint8_t check_CAD = 0; // to check 
+    uint8_t beacon_symbols_cnt = LMIC.sysname_FSMA_beacon_symbols;
 
     // --- doing LBT ----
     if (LMIC.lbt_ticks < 1) {
@@ -1205,10 +1205,6 @@ u1_t cadlora_customSensing (void) {
     #if LMIC_DEBUG_LEVEL > 0
         LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
     #endif
-
-    if (rssi.max_rssi >= LMIC.sysname_lbt_dbmin) {
-        detected_min_energy = 1;
-    }
 
     if (rssi.max_rssi >= LMIC.lbt_dbmax) {
         detected_max_energy = 1;
@@ -1225,32 +1221,28 @@ u1_t cadlora_customSensing (void) {
         configCAD();
 
         for(u2_t ind = 0; ind < LMIC.sysname_cad_difs; ind++){
-            // clear all radio IRQ flags
-            writeReg(LORARegIrqFlags, 0xFF);
-            // set radio to CAD mode
-            opmode(OPMODE_CAD);
-            u1_t flags = 0;
-            while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
-                flags = readReg(LORARegIrqFlags);
+            detected_CAD = doCAD();
+            
+            // if CAD detected -- channel is busy
+            if (detected_CAD == 1) {
+                beacon_symbols_cnt = beacon_symbols_cnt-1;
+                break; 
             }
-            // Increment CAD Counter
-            LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+            
+        }
 
-            if (flags & IRQ_LORA_CDDETD_MASK) {
-                #if LMIC_DEBUG_LEVEL > 0
-                    LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!!!\n");
-                #endif
-                LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
-                clear_bit_CAD = 0;
-                if (LMIC.sysname_is_FSMA_node == 1) {
-                    break; // if channel is busy
-                }
+        // for multiple (beacon) symbols
+        while (detected_CAD == 1 && beacon_symbols_cnt > 0) {
+            detected_CAD = doCAD();
+            
+            // if CAD detected -- channel is busy
+            if (detected_CAD == 1) {
+                beacon_symbols_cnt = beacon_symbols_cnt-1;
             } else {
-                #if LMIC_DEBUG_LEVEL > 0
-                    LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
-                #endif
-                clear_bit_CAD = 1;
+                detected_CAD = 0;
+                break;
             }
+            
         }
 
         if (LMIC.sysname_enable_cad_analysis == 1) { 
@@ -1271,57 +1263,57 @@ u1_t cadlora_customSensing (void) {
         }
     }
 
-    if (LMIC.sysname_is_FSMA_node == 1) {
+    if (LMIC.sysname_is_FSMA_node == 1 && LMIC.sysname_enable_inband_cad == 1) {
         // wait for few ms
         hal_waitUntil(os_getTime() + ms2osticks(LMIC.sysname_waittime_between_cads));
 
-        LMIC.rps = LMIC.sysname_tx_rps;
+        LMIC.rps = LMIC.sysname_inband_cad_rps;
         LMIC.freq = LMIC.sysname_cad_freq_vec[0];
         // doing CAD 
         configCAD();
 
-        // clear all radio IRQ flags
-        writeReg(LORARegIrqFlags, 0xFF);
-        // set radio to CAD mode
-        opmode(OPMODE_CAD);
-        u1_t flags = 0;
-        while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
-            flags = readReg(LORARegIrqFlags);
-        }
-        // Increment CAD Counter
-        LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
-
-        if (flags & IRQ_LORA_CDDETD_MASK) {
-            #if LMIC_DEBUG_LEVEL > 0
-                LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED in CAD_2...!!!\n");
-            #endif
-            LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
-            check_bit_CAD = 0;
-        } else {
-            #if LMIC_DEBUG_LEVEL > 0
-                LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY in CAD_2\n");
-            #endif
-            check_bit_CAD = 1;
-        }
-        clear_bit_CAD = (clear_bit_CAD == 1) || (check_bit_CAD == 0) ;
+        check_CAD = doCAD();
     }
-
-    // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
-    #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("clear_bit_CAD: %d, detected_max_energy:%d, detected_min_energy:%d\n", clear_bit_CAD, detected_max_energy, detected_min_energy);
-    #endif
 
     if (LMIC.sysname_is_FSMA_node == 0) {
-        clear_status = (detected_max_energy == 0) && (clear_bit_CAD == 1);
+        isChannelFree = (detected_max_energy == 0) && (check_CAD == 0) && (detected_CAD == 0);
     } else {
-        clear_status = (clear_bit_CAD == 1);
+        isChannelFree = (check_CAD == 0) && (detected_CAD == 0);
     }
+    // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
+    #if LMIC_DEBUG_LEVEL > 0
+        LMIC_DEBUG_PRINTF("Is channel free: %d, detected_max_energy:%d, detected_CAD %d, check_CAD:%d\n", isChannelFree, detected_max_energy, detected_CAD, check_CAD);
+    #endif
 
-#if LMIC_DEBUG_LEVEL > 0
-    LMIC_DEBUG_PRINTF("Ending sensing at %"LMIC_PRId_ostime_t"\n", os_getTime());
-#endif
+    return isChannelFree;
+}
 
-    return clear_status;
+uint8_t doCAD(){
+    uint8_t detected_CAD; // clear_bit from CAD
+
+    // clear all radio IRQ flags
+    writeReg(LORARegIrqFlags, 0xFF);
+    // set radio to CAD mode
+    opmode(OPMODE_CAD);
+    u1_t flags = 0;
+    while ((flags & IRQ_LORA_CDDONE_MASK) == 0) {
+        flags = readReg(LORARegIrqFlags);
+    }
+    // Increment CAD Counter
+    LMIC.sysname_cad_counter = LMIC.sysname_cad_counter + 1;
+
+    if (flags & IRQ_LORA_CDDETD_MASK) {
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("CHANNEL ACTIVITY DETECTED ...!!!\n");
+        #endif
+        LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
+        detected_CAD = 1;
+    } else {
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("NO CHANNEL ACTIVITY\n");
+        #endif
+        detected_CAD = 0;
+    }   
 }
 
 uint8_t fsmacadlora(){ 

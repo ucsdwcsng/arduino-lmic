@@ -454,6 +454,7 @@ static void prepare_multi_tx()
   // Set the RPS
   LMIC.sysname_tx_rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0);  // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0); // WCSNG
+  LMIC.sysname_inband_cad_rps = 
 
   LMIC.sysname_enable_inband_cad = reg_array[52];
   if (reg_array[53] == 1) {

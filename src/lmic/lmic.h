@@ -570,6 +570,9 @@ struct lmic_t {
     u1_t        sysname_enable_variable_cad_difs;
     u1_t        sysname_waittime_between_cads;
     u1_t        sysname_enable_cad_analysis;
+    u1_t        sysname_FSMA_beacon_symbols;
+    u1_t        sysname_enable_inband_cad;
+    rps_t       sysname_inband_cad_rps;
 
     s2_t        sysname_lbt_rssi_mean;
     s2_t        sysname_lbt_rssi_max;

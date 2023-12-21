@@ -55,7 +55,7 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 126
+#define NODE_IDX 101
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
 #define FREQ_EXPT 915000000
@@ -914,7 +914,7 @@ void setup()
   
   // FSMA
   reg_array[49] = 0; // Diasble FSMA  
-  reg_array[50] = -120; // Listen before talk min RSSI s1_T
+  reg_array[50] = -150; // Listen before talk min RSSI s1_T
   reg_array[51] = 0; // Disable exponential backoff
   LMIC.sysname_is_FSMA_node = 1;
   LMIC.sysname_enable_variable_cad_difs = 0;

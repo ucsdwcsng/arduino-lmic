@@ -10,7 +10,7 @@
 #define ENABLE_CAD_SF 8 // SF: 8, 9, 10, 11, 12
 #define SYMBOL_TIME 2.048*(ENABLE_CAD_SF-7)
 #define DELAY_TIME 9*SYMBOL_TIME
-#define TOTAL_CADS 10000
+#define TOTAL_CADS 50000
 #define ADAFRUIT_FEATHER 2
 
 // Pin mapping

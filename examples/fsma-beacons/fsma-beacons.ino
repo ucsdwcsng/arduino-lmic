@@ -12,10 +12,13 @@
 #define FREQ_CNFG 922000000
 #define INTERRUPT_CAD 1
 #define BEACON_SYMBOLS 1
+#define SYMBOL_TIME 8192//2048
 #define VBATPIN A7
+#define ADAFRUIT_FEATHER 2
 
 // Pin mapping Adafruit feather RP2040
-#if (defined(ADAFRUIT_FEATHER_RP2040) && (ADAFRUIT_FEATHER_RP2040 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+
+#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040.
 const lmic_pinmap lmic_pins = {
   .nss = 16,
   .rxtx = LMIC_UNUSED_PIN,
@@ -26,11 +29,12 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-int32_t interrupt_timer = us2osticks(10000 + 2048 * 1);  //SF-8, DIFS-1
-// int32_t interrupt_timer = us2osticks(5600 + 2048 * 1);  //SF-8, DIFS-1
+int32_t interrupt_timer = us2osticks(10000 + SYMBOL_TIME * 1);  //SF-8, DIFS-1
+// int32_t interrupt_timer = us2osticks(5600 + SYMBOL_TIME * 1);  //SF-8, DIFS-1
 
 // Pin mapping Adafruit feather M0
-#elif (defined(ADAFRUIT_FEATHER_M0) && (ADAFRUIT_FEATHER_M0 == 1))  // Pin mapping for Adafruit Feather M0 LoRa, etc.
+
+#elif (ADAFRUIT_FEATHER == 1)  // Pin mapping for Adafruit Feather RP2040.
 const lmic_pinmap lmic_pins = {
   .nss = 8,
   .rxtx = LMIC_UNUSED_PIN,
@@ -41,8 +45,8 @@ const lmic_pinmap lmic_pins = {
   .spi_freq = 8000000,
 };
 
-int32_t interrupt_timer = us2osticks(16800 + 2048*BEACON_SYMBOLS);
-// int32_t interrupt_timer = us2osticks(1000 + 2048);
+int32_t interrupt_timer = us2osticks(16800 + SYMBOL_TIME*BEACON_SYMBOLS);
+// int32_t interrupt_timer = us2osticks(1000 + SYMBOL_TIME);
 
 #else
 // Pin mapping
@@ -53,9 +57,9 @@ const lmic_pinmap lmic_pins = {
   .dio = { 2, 3, 4 },
 };
 
-// int32_t interrupt_timer = us2osticks(7000 + 2048*2);
-// int32_t interrupt_timer = us2osticks(35678 + 2048*2); //SF-10, DIFS-2
-int32_t interrupt_timer = us2osticks(21000 + 2048 * 2);  //SF-10, DIFS-2
+// int32_t interrupt_timer = us2osticks(7000 + SYMBOL_TIME*2);
+// int32_t interrupt_timer = us2osticks(35678 + SYMBOL_TIME*2); //SF-10, DIFS-2
+int32_t interrupt_timer = us2osticks(21000 + SYMBOL_TIME * 2);  //SF-10, DIFS-2
 #endif
 
 // These callbacks are only used in over-the-air activation, so they are
@@ -72,7 +76,7 @@ ostime_t expt_start_time, expt_stop_time;  // 1ms is 62.5 os ticks
 int32_t experiment_time;
 
 #if (defined(INTERRUPT_CAD) && (INTERRUPT_CAD == 1)) 
-  int32_t interrupt_cad_timer = us2osticks(1000 + 2048*BEACON_SYMBOLS);
+  int32_t interrupt_cad_timer = us2osticks(1000 + SYMBOL_TIME*BEACON_SYMBOLS);
 #endif
 
 void tx(osjobcb_t func) {
@@ -194,7 +198,7 @@ static void rx_func(osjob_t *job) {
 static void experiment_timeout_func(osjob_t *job) {
   // resetting to control params
   LMIC.freq = FREQ_CNFG;
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);               // WCSNG
 
   Serial.println("Experiment timeout function triggered...");
   radio_init();
@@ -211,11 +215,11 @@ static void intialize() {
   //  LMIC.rps = MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_tx_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
-  LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);    // WCSNG
+  LMIC.rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);               // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);    // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
-  LMIC.txpow = -4;
-  LMIC.radio_txpow = -4;  // WCSNG
+  LMIC.txpow = 30;
+  LMIC.radio_txpow = 30;  // WCSNG
 
   // Set the LMIC CAD Frequencies
   LMIC.freq = 922000000;                     // WCSNG

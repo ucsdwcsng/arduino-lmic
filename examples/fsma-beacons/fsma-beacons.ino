@@ -13,6 +13,7 @@
 #define INTERRUPT_CAD 1
 #define BEACON_SYMBOLS 2
 #define SYMBOL_TIME 2048
+#define TRANSMIT_POWER -4
 #define VBATPIN A7
 #define ADAFRUIT_FEATHER 2
 
@@ -218,8 +219,8 @@ static void intialize() {
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);               // WCSNG
   LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);    // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);  // WCSNG
-  LMIC.txpow = 30;
-  LMIC.radio_txpow = 30;  // WCSNG
+  LMIC.txpow = TRANSMIT_POWER;
+  LMIC.radio_txpow = TRANSMIT_POWER;  // WCSNG
 
   // Set the LMIC CAD Frequencies
   LMIC.freq = 922000000;                     // WCSNG

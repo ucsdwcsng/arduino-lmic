@@ -1234,7 +1234,7 @@ u1_t cadlora_customSensing (void) {
         // for multiple (beacon) symbols
         while (detected_CAD == 1 && beacon_symbols_cnt > 0) {
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("Checking for symbol :%d\n", LMIC.sysname_FSMA_beacon_symbols-beacon_symbols_cnt+1);
+            LMIC_DEBUG_PRINTF("Checking for symbol: %d\n", LMIC.sysname_FSMA_beacon_symbols-beacon_symbols_cnt+1);
         #endif
             detected_CAD = doCAD();
             
@@ -1552,14 +1552,16 @@ static void txlora () {
 // enable CSMA only if level is above 0
 #if LMIC_CSMA_LEVEL > 0
 	if(LMIC.sysname_enable_cad){
-		LMIC.rps = LMIC.sysname_cad_rps;
 		if(LMIC.sysname_csma_algo){
+            LMIC.rps = LMIC.sysname_tx_rps;
             LMIC.freq = LMIC.sysname_cad_freq_vec[0];
 			lmaccadlora();
 		} else if (LMIC.sysname_enable_FSMA){
+            LMIC.rps = LMIC.sysname_cad_rps;
             LMIC.freq = LMIC.sysname_cad_freq_vec[1];
             fsmacadlora();
 		} else {
+            LMIC.rps = LMIC.sysname_tx_rps;
             LMIC.freq = LMIC.sysname_cad_freq_vec[0];
     		cadlora();
     	}

@@ -60,7 +60,7 @@ Author:
 #define FREQ_EXPT 920000000
 #define ADAFRUIT_FEATHER 2
 #define CR_TYPE CR_4_8
-#define TX_CR_TYPE CR_4_5
+#define TX_CR_TYPE CR_4_8
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.

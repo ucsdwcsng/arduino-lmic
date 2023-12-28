@@ -178,7 +178,7 @@ byte buf_tx[16];
 // 57: FSMA beacon symbols
 
 // For Ref
-// enum _cr_t { CR_4_5=0, CR_4_6, CR_4_7, CR_4_8 };
+// enum _cr_t { CR_4_8=0, CR_4_6, CR_4_7, CR_4_8 };
 // enum _sf_t { FSK=0, SF7, SF8, SF9, SF10, SF11, SF12, SFrfu };
 // enum _bw_t { BW125=0, BW250, BW500, BWrfu };
 
@@ -511,9 +511,9 @@ static void store_multitx_results()
   // Resetting Freq and RPS
   LMIC.freq = trx_freq_vec[freq_cnfg_ind];      // WCSNG
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
-  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
-  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
+  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
+  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
 
   // Resetting CAD State
   LMIC.sysname_enable_cad = 0;
@@ -887,8 +887,8 @@ void setup()
   //  LMIC.sysname_tx_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   //  LMIC.sysname_cad_rps =  MAKERPS(SF8 , BW500, CR_4_8, 0, 0); // WCSNG
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);             // WCSNG
-  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);  // WCSNG
-  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);  // WCSNG
+  LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
   LMIC.txpow = -2;
   LMIC.radio_txpow = -5; // WCSNG
   LMIC.adrTxPow = -3;
@@ -951,7 +951,7 @@ void setup()
   LMIC.sysname_waittime_between_cads = 2; // in ms
   LMIC.sysname_FSMA_beacon_symbols = 1;
   LMIC.sysname_enable_inband_cad = 1;
-  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_5, 0, 0);
+  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
 
   for (byte idx = 0; idx < 100; idx++)
     reg_array[101 + idx] = RSSI_RESET_VAL;

@@ -242,12 +242,12 @@ static void intialize() {
   LMIC.sysname_is_FSMA_node = 0;
   LMIC.sysname_enable_exponential_backoff = 0;
   LMIC.sysname_enable_variable_cad_difs = 0;
-  LMIC.sysname_FSMA_beacon_symbols = 2;
+  LMIC.sysname_FSMA_beacon_symbols = 1;
   // LMIC.sysname_enable_inband_cad = 1;
-  // LMIC.sysname_inband_cad_rps = MAKERPS(SF10, BW125, CR_4_5, 0, 0);
+  // LMIC.sysname_inband_cad_rps = MAKERPS(SF10, BW125, CR_4_8, 0, 0);
 
   LMIC.lbt_ticks = 8;
-  LMIC.sysname_cad_difs = 1;
+  LMIC.sysname_cad_difs = 2;
   LMIC.sysname_lbt_dbmin = -115;
   LMIC.sysname_lbt_counter = 0;
   LMIC.sysname_cad_counter = 0;

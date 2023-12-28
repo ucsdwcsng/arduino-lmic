@@ -62,7 +62,7 @@
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
 #define SF_TYPE SF10 
-#define CR_TYPE CR_4_5
+#define CR_TYPE CR_4_8
 #define PRINT_TO_SERIAL 1 // 1 prints on serial, else in memory
 #define ADAFRUIT_FEATHER 2
 // check LMIC_DEBUG_LEVEL

@@ -55,13 +55,16 @@
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 
-#define NODE_IDX 127
+#define NODE_IDX 125
+
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 10
-#define FREQ_EXPT 915000000
-#define FREQ_CNFG 917000000
 #define RB_LEN 65
-#define ADAFRUIT_FEATHER 1
+
+#define FREQ_CAD_INDEX 18
+#define FREQ_EXPT_INDEX 20
+#define FREQ_CNFG_INDEX 22
+#define ADAFRUIT_FEATHER 2
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040.
@@ -152,6 +155,9 @@ byte buf_tx[16];
 //---------------------------------
 
 // 24: Transmit power range - 4 to 21 dBm
+// 25: Change experiment frequency
+// 26: Change CAD frequency
+// 27: max start delay (range 1 to 256)
 
 // 24--44 - Node Idx (changed)
 // 54--64 - Node Idx (changed)
@@ -173,8 +179,7 @@ byte buf_tx[16];
 // 49: Enable FSMA
 // 50: Listen before talk min RSSI s1_t
 // 51: Enable Exponential backoff
-// 55: Enable inband CAD
-// 56: RPS of inband CAD type (1 - same as CAD, 2 - same as tx)
+// 55: Enable inband CAD / false positive check (0-None, 1-false positive, 2-inband CAD)
 // 57: FSMA beacon symbols
 
 // For Ref
@@ -192,6 +197,7 @@ int experiment_tx_power;
 u4_t scheduler_list_ms[SCHEDULE_LEN];
 
 u1_t freq_expt_ind, freq_cad_ind, freq_cnfg_ind;
+u1_t expt_start_delay;
 u4_t trx_freq_vec[24];
 
 u4_t multi_tx_packet_ctr;
@@ -452,6 +458,8 @@ static void prepare_multi_tx()
   LMIC.sysname_enable_exponential_backoff = reg_array[51];
 
   // Change the center frequency
+  freq_expt_ind = reg_array[25];
+  freq_cad_ind = reg_array[26];
   LMIC.freq = trx_freq_vec[freq_expt_ind]; // WCSNG
   LMIC.sysname_cad_freq_vec[0] = trx_freq_vec[freq_expt_ind];
   LMIC.sysname_cad_freq_vec[1] = trx_freq_vec[freq_cad_ind];
@@ -459,14 +467,8 @@ static void prepare_multi_tx()
   // Set the RPS
   LMIC.sysname_tx_rps = MAKERPS(reg_array[17] >> 4, reg_array[18] >> 4, reg_array[19] >> 4, 0, 0);  // WCSNG
   LMIC.sysname_cad_rps = MAKERPS(reg_array[17] % 16, reg_array[18] % 16, reg_array[19] % 16, 0, 0); // WCSNG
-  LMIC.sysname_inband_cad_rps = 
 
   LMIC.sysname_enable_inband_cad = reg_array[55];
-  if (reg_array[56] == 1) {
-    LMIC.sysname_inband_cad_rps = LMIC.sysname_cad_rps;
-  } else if (reg_array[56] == 2) {
-    LMIC.sysname_inband_cad_rps = LMIC.sysname_tx_rps;
-  }
   LMIC.sysname_FSMA_beacon_symbols = reg_array[57];
 
   if (experiment_tx_power != (int8_t) reg_array[24]) {
@@ -513,7 +515,6 @@ static void store_multitx_results()
   LMIC.rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0); // WCSNG
   LMIC.sysname_tx_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
   LMIC.sysname_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
-  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
 
   // Resetting CAD State
   LMIC.sysname_enable_cad = 0;
@@ -842,8 +843,18 @@ static void arbiter_fn(osjob_t *job)
       Serial.print("Setting experiment timeout after: ");
       Serial.print(experiment_time);
       Serial.println(" s");
-      os_setTimedCallback(&timeoutjob, expt_stop_time, experiment_timeout_func);
 
+      // generate a random delay
+      if (reg_array[27] > 1) {
+        expt_start_delay = radio_rand1()% (reg_array[27]); // generates delay between 0 to reg_array[27] or 255 ms
+        delay(expt_start_delay); 
+      }
+
+      Serial.print("Added random start delay(0-255): ");
+      Serial.print(expt_start_delay);
+      Serial.println(" ms");
+
+      os_setTimedCallback(&timeoutjob, expt_stop_time, experiment_timeout_func);
       os_setCallback(job, timed_executor);
       break;
     case 11:
@@ -899,9 +910,9 @@ void setup()
     trx_freq_vec[idx] = 900000000 + ((u4_t)idx) * 1000000;
   }
 
-  freq_cad_ind = 18;
-  freq_expt_ind = 20;
-  freq_cnfg_ind = 22; // 13
+  freq_cad_ind = FREQ_CAD_INDEX;
+  freq_expt_ind = FREQ_EXPT_INDEX;
+  freq_cnfg_ind = FREQ_CNFG_INDEX; // 13
   // Set the LMIC CAD Frequencies
   LMIC.freq = trx_freq_vec[freq_cnfg_ind]; // WCSNG
   LMIC.sysname_cad_freq_vec[0] = trx_freq_vec[freq_expt_ind];
@@ -935,6 +946,12 @@ void setup()
   reg_array[22] = -90; // Listen before talk max RSSI s1_t
   reg_array[23] = 1;   // Kill CAD Wait time (0 or 1)
 
+  reg_array[24] = -4;
+  reg_array[25] = freq_expt_ind;
+  reg_array[26] = freq_cad_ind;
+  reg_array[27] = 256;
+
+  
   reg_array[45] = 10; // Variance if using periodic scheduling
   LMIC.sysname_kill_cad_delay = 0; // Kill CAD Wait time (0 or 1)
   
@@ -951,7 +968,6 @@ void setup()
   LMIC.sysname_waittime_between_cads = 2; // in ms
   LMIC.sysname_FSMA_beacon_symbols = 1;
   LMIC.sysname_enable_inband_cad = 1;
-  LMIC.sysname_inband_cad_rps = MAKERPS(SF8, BW125, CR_4_8, 0, 0);
 
   for (byte idx = 0; idx < 100; idx++)
     reg_array[101 + idx] = RSSI_RESET_VAL;

@@ -1159,7 +1159,7 @@ uint8_t cadlora (){
 
 		        if (flags & IRQ_LORA_CDDETD_MASK) {
 		        	#if LMIC_DEBUG_LEVEL > 0
-		        		LMIC_DEBUG_PRINTF("CAD SENSED!");
+		        		LMIC_DEBUG_PRINTF("CAD SENSED!\n");
 		        	#endif
 		        	LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
 		            clear_bit=0;
@@ -1234,7 +1234,7 @@ u1_t cadlora_customSensing (void) {
         // for multiple (beacon) symbols
         while (detected_CAD == 1 && beacon_symbols_cnt > 0) {
         #if LMIC_DEBUG_LEVEL > 0
-            LMIC_DEBUG_PRINTF("Checking for symbol: %d\n", LMIC.sysname_FSMA_beacon_symbols-beacon_symbols_cnt+1);
+            LMIC_DEBUG_PRINTF("Checking for multiple symbols (symbol-%d)\n", LMIC.sysname_FSMA_beacon_symbols-beacon_symbols_cnt+1);
         #endif
             detected_CAD = doCAD();
             
@@ -1247,41 +1247,27 @@ u1_t cadlora_customSensing (void) {
             }
             
         }
-
-        if (LMIC.sysname_enable_cad_analysis == 1) { 
-            // read rx quality parameters for cad analysis
-            LMIC.sysname_cad_snr  = readReg(LORARegPktSnrValue); // SNR [dB] * 4
-            u1_t const rRssi = readReg(LORARegPktRssiValue);
-            LMIC.sysname_cad_rssi = rRssi;
-            if (LMIC.freq > SX127X_FREQ_LF_MAX)
-                LMIC.sysname_cad_rssi += SX127X_RSSI_ADJUST_HF;
-            else
-                LMIC.sysname_cad_rssi += SX127X_RSSI_ADJUST_LF;
-            if (LMIC.sysname_cad_snr < 0)
-                LMIC.sysname_cad_rssi = LMIC.sysname_cad_rssi - (-LMIC.sysname_cad_snr >> 2);
-            else if (LMIC.sysname_cad_rssi > -100) {
-                // correct nonlinearity -- this is the same as multiplying rRssi * 16/15 initially.
-                LMIC.sysname_cad_rssi += (rRssi / 15);
-            }
-        }
     }
 
     // for node, false positive check / inband cad
-    if (LMIC.sysname_is_FSMA_node == 1 && detected_CAD == 1) {
+    if (LMIC.sysname_is_FSMA_node > 0 && detected_CAD == 1) {
 
         // wait for few ms
         hal_waitUntil(os_getTime() + ms2osticks(LMIC.sysname_waittime_between_cads));
 
-        LMIC.rps = LMIC.sysname_inband_cad_rps;
-        if ( LMIC.sysname_enable_inband_cad == 0 &&  LMIC.sysname_enable_inband_cad == 2) {
+        if (LMIC.sysname_enable_inband_cad == 2) {
             LMIC.freq = LMIC.sysname_cad_freq_vec[0];
+            LMIC.rps = LMIC.sysname_tx_rps;
             #if LMIC_DEBUG_LEVEL > 0
                 LMIC_DEBUG_PRINTF("Checking for in Band CAD\n");
             #endif
-        } else {
-            LMIC.freq = LMIC.sysname_cad_freq_vec[1];
+        } else if (LMIC.sysname_enable_inband_cad == 2) {
             #if LMIC_DEBUG_LEVEL > 0
                 LMIC_DEBUG_PRINTF("Checking for false positive CAD\n");
+            #endif
+        } else {
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("Warning:sysname_enable_inband_cad > 2, checking for false positive CAD\n");
             #endif
         }
 

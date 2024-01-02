@@ -54,6 +54,7 @@
 // this interval should not also be increased.
 // See this spreadsheet for an easy airtime and duty cycle calculator:
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
+// debug level: LMIC_DEBUG_LEVEL
 
 #define NODE_IDX 125
 
@@ -830,6 +831,15 @@ static void arbiter_fn(osjob_t *job)
       os_setCallback(job, rx_func);
       break;
     case 10:
+      // generate a random delay
+      if (reg_array[27] > 1) {
+        expt_start_delay = radio_rand1()% (reg_array[27]); // generates delay between 0 to reg_array[27] or 255 ms
+        delay(expt_start_delay);
+      }
+      Serial.print("Added random start delay(0-255): ");
+      Serial.print(expt_start_delay);
+      Serial.println(" ms");
+
       // Start Continuous Transmission
       prepare_multi_tx();
       expt_start_time = os_getTime();
@@ -843,16 +853,6 @@ static void arbiter_fn(osjob_t *job)
       Serial.print("Setting experiment timeout after: ");
       Serial.print(experiment_time);
       Serial.println(" s");
-
-      // generate a random delay
-      if (reg_array[27] > 1) {
-        expt_start_delay = radio_rand1()% (reg_array[27]); // generates delay between 0 to reg_array[27] or 255 ms
-        delay(expt_start_delay); 
-      }
-
-      Serial.print("Added random start delay(0-255): ");
-      Serial.print(expt_start_delay);
-      Serial.println(" ms");
 
       os_setTimedCallback(&timeoutjob, expt_stop_time, experiment_timeout_func);
       os_setCallback(job, timed_executor);

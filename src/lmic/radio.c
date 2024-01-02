@@ -1250,7 +1250,7 @@ u1_t cadlora_customSensing (void) {
     }
 
     // for node, false positive check / inband cad
-    if (LMIC.sysname_is_FSMA_node > 0 && detected_CAD == 1) {
+    if (LMIC.sysname_is_FSMA_node == 1 && detected_CAD == 1 && LMIC.sysname_enable_inband_cad > 0) {
 
         // wait for few ms
         hal_waitUntil(os_getTime() + ms2osticks(LMIC.sysname_waittime_between_cads));
@@ -1261,7 +1261,7 @@ u1_t cadlora_customSensing (void) {
             #if LMIC_DEBUG_LEVEL > 0
                 LMIC_DEBUG_PRINTF("Checking for in Band CAD\n");
             #endif
-        } else if (LMIC.sysname_enable_inband_cad == 2) {
+        } else if (LMIC.sysname_enable_inband_cad == 1) {
             #if LMIC_DEBUG_LEVEL > 0
                 LMIC_DEBUG_PRINTF("Checking for false positive CAD\n");
             #endif

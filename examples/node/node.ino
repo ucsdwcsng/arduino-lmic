@@ -59,7 +59,7 @@
 #define NODE_IDX 125
 
 #define RSSI_RESET_VAL 128
-#define SCHEDULE_LEN 10
+#define SCHEDULE_LEN 100
 #define RB_LEN 65
 
 #define FREQ_CAD_INDEX 18
@@ -195,7 +195,7 @@ ostime_t expt_start_time, expt_stop_time; // 1ms is 62.5 os ticks
 int experiment_time;
 int arbiter_state;
 int experiment_tx_power;
-u4_t scheduler_list_ms[SCHEDULE_LEN];
+ostime_t scheduler_list_ms[SCHEDULE_LEN];
 
 u1_t freq_expt_ind, freq_cad_ind, freq_cnfg_ind;
 u1_t expt_start_delay;
@@ -413,9 +413,10 @@ static u4_t get_wait_time_ms()
 
 static void fill_schedule()
 {
-  for (byte ind = 0; ind < SCHEDULE_LEN; ind++)
+  scheduler_list_ms[0] = os_getTime();
+  for (byte ind = 1; ind < SCHEDULE_LEN; ind++)
   {
-    scheduler_list_ms[ind] = get_wait_time_ms();
+    scheduler_list_ms[ind] = scheduler_list_ms[ind-1] + ms2osticks(get_wait_time_ms());
   }
 }
 
@@ -610,7 +611,7 @@ static void timed_executor(osjob_t *job)
         fill_schedule();
 
       // Schedule Tx
-      prev_time = prev_time + ms2osticks(scheduler_list_ms[scheduler_idx]);
+      prev_time = scheduler_list_ms[scheduler_idx];
 
       // Check if time passed, if not schedule. If passed, do immediately
       if (prev_time > os_getTime())
@@ -658,6 +659,9 @@ static void arbiter_fn(osjob_t *job)
   // byte 1    : Command to Node
   // byte 2    : Register
   // byte 3    : Value
+  if (buf_in[0] == 255) {
+    delay(5); // delay 5ms for broadcast messages
+  }
 
   if ((buf_in[0] == NODE_IDX || buf_in[0] == 255) && !LMIC.sysname_crc_err)
   {

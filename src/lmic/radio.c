@@ -1231,6 +1231,10 @@ u1_t cadlora_customSensing (void) {
             
         }
 
+        #if LMIC_DEBUG_LEVEL > 0
+            LMIC_DEBUG_PRINTF("Detected CAD: %d, Beacons symbols left: %d\n", detected_CAD, beacon_symbols_cnt);
+        #endif
+
         // for multiple (beacon) symbols
         while (detected_CAD == 1 && beacon_symbols_cnt > 0) {
         #if LMIC_DEBUG_LEVEL > 0

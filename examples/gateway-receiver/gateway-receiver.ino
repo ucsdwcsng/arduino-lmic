@@ -61,7 +61,7 @@
 #define RSSI_OFFSET 64
 #define FREQ_EXPT 920000000
 #define FREQ_CNFG 922000000
-#define SF_TYPE SF10 
+#define SF_TYPE SF11
 #define CR_TYPE CR_4_8
 #define PRINT_TO_SERIAL 1 // 1 prints on serial, else in memory
 #define ADAFRUIT_FEATHER 2

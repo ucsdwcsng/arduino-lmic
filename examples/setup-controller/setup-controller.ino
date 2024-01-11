@@ -60,7 +60,8 @@ Author:
 #define FREQ_EXPT 920000000
 #define ADAFRUIT_FEATHER 2
 #define CR_TYPE CR_4_8
-#define TX_CR_TYPE CR_4_8
+#define DATA_CR_TYPE CR_4_8
+#define DATA_SF_TYPE SF11
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
@@ -284,8 +285,8 @@ static void tx_func(osjob_t *job) {
 static void tx_func_multi(osjob_t *job)
 {
   LMIC.freq = FREQ_EXPT; // FREQ_CNFG; // WCSNG
-  LMIC.rps = MAKERPS(SF10, BW125, TX_CR_TYPE, 0, 0); // WCSNG
-  LMIC.sysname_tx_rps= MAKERPS(SF10, BW125, TX_CR_TYPE, 0, 0); // WCSNG
+  LMIC.rps = MAKERPS(DATA_SF_TYPE, BW125, DATA_CR_TYPE, 0, 0); // WCSNG
+  LMIC.sysname_tx_rps= MAKERPS(DATA_SF_TYPE, BW125, DATA_CR_TYPE, 0, 0); // WCSNG
   tx_multi(txmultidone_func);
 }
 

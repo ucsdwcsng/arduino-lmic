@@ -158,7 +158,8 @@ byte buf_tx[16];
 // 24: Transmit power range - 4 to 21 dBm
 // 25: Change experiment frequency
 // 26: Change CAD frequency
-// 27: max start delay (range 1 to 256)
+// 27: max start delay - lower byte (range 0 to 255)
+// 28: max start delay - higher byte (range 0 to 255)
 
 // 24--44 - Node Idx (changed)
 // 54--64 - Node Idx (changed)
@@ -198,7 +199,7 @@ int experiment_tx_power;
 ostime_t scheduler_list_ms[SCHEDULE_LEN];
 
 u1_t freq_expt_ind, freq_cad_ind, freq_cnfg_ind;
-u1_t expt_start_delay;
+u2_t expt_start_delay, max_start_delay;
 u4_t trx_freq_vec[24];
 
 u4_t multi_tx_packet_ctr;
@@ -836,12 +837,15 @@ static void arbiter_fn(osjob_t *job)
       break;
     case 10:
       // generate a random delay
-      if (reg_array[27] > 1) {
-        expt_start_delay = radio_rand1()% (reg_array[27]); // generates delay between 0 to reg_array[27] or 255 ms
+      max_start_delay = reg_array[28]*256 + reg_array[27];
+      if (max_start_delay > 1) {
+        expt_start_delay = (radio_rand1()*radio_rand1())%(max_start_delay); // generates delay between 0 to max_start_delay (default: 1s)
         delay(expt_start_delay);
       }
-      Serial.print("Added random start delay(0-255): ");
+      Serial.print("Added random start delay: ");
       Serial.print(expt_start_delay);
+      Serial.print(" ms, max start delay: ");
+      Serial.print(max_start_delay);
       Serial.println(" ms");
 
       // Start Continuous Transmission
@@ -953,7 +957,8 @@ void setup()
   reg_array[24] = -4;
   reg_array[25] = freq_expt_ind;
   reg_array[26] = freq_cad_ind;
-  reg_array[27] = 256;
+  reg_array[27] = 232;
+  reg_array[28] = 3;
 
   
   reg_array[45] = 10; // Variance if using periodic scheduling

@@ -303,10 +303,10 @@ static void rxtimeout_func(osjob_t *job)
 
 static void rxdone_func(osjob_t *job)
 {
-  // Blink once to confirm reception and then keep the led on
-  digitalWrite(LED_BUILTIN, LOW); // off
-  delay(10);
-  digitalWrite(LED_BUILTIN, HIGH); // on
+  // // Blink once to confirm reception and then keep the led on
+  // digitalWrite(LED_BUILTIN, LOW); // off
+  // delay(10);
+  // digitalWrite(LED_BUILTIN, HIGH); // on
 
   buf_in[0] = LMIC.frame[0];
   buf_in[1] = LMIC.frame[1];

@@ -56,7 +56,7 @@
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 // debug level: LMIC_DEBUG_LEVEL
 
-#define NODE_IDX 125
+#define NODE_IDX 101
 
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 100
@@ -65,7 +65,7 @@
 #define FREQ_CAD_INDEX 18
 #define FREQ_EXPT_INDEX 20
 #define FREQ_CNFG_INDEX 22
-#define ADAFRUIT_FEATHER 2
+#define ADAFRUIT_FEATHER 1
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040.
@@ -160,6 +160,9 @@ byte buf_tx[16];
 // 26: Change CAD frequency
 // 27: max start delay - lower byte (range 0 to 255)
 // 28: max start delay - higher byte (range 0 to 255)
+// 29: custom start delay - lower byte (range 0 to 255)
+// 30: custom start delay - higher byte (range 0 to 255)
+// 31: enable random propagation delays
 
 // 24--44 - Node Idx (changed)
 // 54--64 - Node Idx (changed)
@@ -199,7 +202,8 @@ int experiment_tx_power;
 ostime_t scheduler_list_ms[SCHEDULE_LEN];
 
 u1_t freq_expt_ind, freq_cad_ind, freq_cnfg_ind;
-u2_t expt_start_delay, max_start_delay;
+u2_t expt_start_delay, max_start_delay, custom_start_delay, propagation_delay;
+// float random_decimal;
 u4_t trx_freq_vec[24];
 
 u4_t multi_tx_packet_ctr;
@@ -235,6 +239,16 @@ void tx(osjobcb_t func)
 
 void tx_multi(osjobcb_t func)
 {
+  //enable propagation delays
+  if (reg_array[31] > 0){
+    // generates 3000 to 10000 us (3ms to 7ms)
+    propagation_delay = 3000 + floor(7000*(((float)os_getRndU1()) / 255)); 
+    delayMicroseconds(propagation_delay);
+    // Serial.print("Propagation delay: ");
+    // Serial.print(propagation_delay);
+    // Serial.print("\n");
+  }
+
   // set transmit power
   LMIC.txpow = experiment_tx_power;
   LMIC.radio_txpow = experiment_tx_power; // WCSNG
@@ -838,15 +852,25 @@ static void arbiter_fn(osjob_t *job)
     case 10:
       // generate a random delay
       max_start_delay = reg_array[28]*256 + reg_array[27];
+      custom_start_delay = reg_array[30]*256 + reg_array[29];
       if (max_start_delay > 1) {
         expt_start_delay = (radio_rand1()*radio_rand1())%(max_start_delay); // generates delay between 0 to max_start_delay (default: 1s)
         delay(expt_start_delay);
+      } else {
+        expt_start_delay = 0;
       }
       Serial.print("Added random start delay: ");
       Serial.print(expt_start_delay);
       Serial.print(" ms, max start delay: ");
       Serial.print(max_start_delay);
       Serial.println(" ms");
+
+      if (custom_start_delay > 0) {
+        delay(custom_start_delay);
+        Serial.print("Added custom start delay: ");
+        Serial.print(custom_start_delay);
+        Serial.println(" ms");
+      }
 
       // Start Continuous Transmission
       prepare_multi_tx();
@@ -957,9 +981,11 @@ void setup()
   reg_array[24] = -4;
   reg_array[25] = freq_expt_ind;
   reg_array[26] = freq_cad_ind;
-  reg_array[27] = 232;
-  reg_array[28] = 3;
-
+  reg_array[27] = 0;
+  reg_array[28] = 0;
+  reg_array[29] = 0;
+  reg_array[30] = 0;
+  reg_array[31] = 1;
   
   reg_array[45] = 10; // Variance if using periodic scheduling
   LMIC.sysname_kill_cad_delay = 0; // Kill CAD Wait time (0 or 1)

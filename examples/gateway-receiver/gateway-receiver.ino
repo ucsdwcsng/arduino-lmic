@@ -59,16 +59,17 @@
 #define SCHEDULE_LEN 10
 #define SNR_FACTOR 4
 #define RSSI_OFFSET 64
-#define FREQ_EXPT 920000000
+#define FREQ_EXPT 911000000
 #define FREQ_CNFG 922000000
-#define SF_TYPE SF11
+#define SF_TYPE SF8
 #define CR_TYPE CR_4_8
-#define PRINT_TO_SERIAL 0 // 1 prints on serial, else in memory
-#define ADAFRUIT_FEATHER 2
+#define PAYLOAD_LEN 10
+#define PRINT_TO_SERIAL 1 // 1 prints on serial, else in memory
+#define ADAFRUIT_FEATHER_TYPE 2
 // check LMIC_DEBUG_LEVEL
 
 // Pin mapping
-#if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
+#if (ADAFRUIT_FEATHER_TYPE == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
 const lmic_pinmap lmic_pins = {
     .nss = 16,
     .rxtx = LMIC_UNUSED_PIN,
@@ -80,7 +81,7 @@ const lmic_pinmap lmic_pins = {
 };
 
 // Pin mapping Adafruit feather M0
-#elif (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#elif (ADAFRUIT_FEATHER_TYPE == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
     .nss = 8,
     .rxtx = LMIC_UNUSED_PIN,
@@ -161,6 +162,8 @@ static void backhaul_data(osjob_t *job)
   Serial.print(LMIC.snr);
   Serial.print(", ");
   Serial.print(LMIC.sysname_crc_err);
+  // Serial.print(", ");
+  // Serial.print(LMIC.dataLen);
   Serial.print("\n");
 }
 
@@ -255,6 +258,7 @@ void setup()
   os_init();
 
   // disable RX IQ inversion
+  LMIC.dataLen = PAYLOAD_LEN;
   LMIC.noRXIQinversion = true;
   LMIC.freq = FREQ_EXPT; // WCSNG
   // MAKERPS(SF8 , BW500, CR_TYPE, 0, 0)
@@ -264,7 +268,7 @@ void setup()
   LMIC.txpow = 21;
   LMIC.radio_txpow = 21; // WCSNG
 
-#if (ADAFRUIT_FEATHER == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
+#if (ADAFRUIT_FEATHER_TYPE == 1) // Pin mapping for Adafruit Feather M0 LoRa, etc.
   float measuredvbat = analogRead(VBATPIN);
   measuredvbat *= 2;    // we divided by 2, so multiply back
   measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage

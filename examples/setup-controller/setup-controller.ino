@@ -61,7 +61,7 @@ Author:
 #define ADAFRUIT_FEATHER 2
 #define CR_TYPE CR_4_8
 #define DATA_CR_TYPE CR_4_8
-#define DATA_SF_TYPE SF11
+#define DATA_SF_TYPE SF8
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.

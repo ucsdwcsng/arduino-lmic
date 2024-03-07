@@ -156,14 +156,14 @@ static void backhaul_data(osjob_t *job)
       Serial.print(LMIC.frame[ind], HEX);
     }
   }
-  Serial.print(", ");
+  Serial.print(",");
   Serial.print(LMIC.rssi);
-  Serial.print(", ");
+  Serial.print(",");
   Serial.print(LMIC.snr);
-  Serial.print(", ");
+  Serial.print(",");
   Serial.print(LMIC.sysname_crc_err);
-  // Serial.print(", ");
-  // Serial.print(LMIC.dataLen);
+  Serial.print(",");
+  Serial.printf("%d", millis()/1000);
   Serial.print("\n");
 }
 
@@ -174,13 +174,13 @@ static void backhaul_data_flash(osjob_t *job)
   {
     flash_writer.printf("%02X", LMIC.frame[ind]);
   }
-  flash_writer.print(", ");
+  flash_writer.print(",");
   flash_writer.printf("%d", LMIC.rssi);
-  flash_writer.print(", ");
+  flash_writer.print(",");
   flash_writer.printf("%d", LMIC.snr);
-  flash_writer.print(", ");
+  flash_writer.print(",");
   flash_writer.printf("%d", LMIC.sysname_crc_err);
-  flash_writer.print(", ");
+  flash_writer.print(",");
   flash_writer.printf("%d", millis()/1000);
   flash_writer.print("\n");
 }

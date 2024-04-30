@@ -59,7 +59,8 @@
 #define SCHEDULE_LEN 10
 #define SNR_FACTOR 4
 #define RSSI_OFFSET 64
-#define FREQ_EXPT 911000000
+// #define FREQ_EXPT 911000000
+#define FREQ_EXPT 911000000  // Jason chnage freq here
 #define FREQ_CNFG 922000000
 #define SF_TYPE SF8
 #define CR_TYPE CR_4_8

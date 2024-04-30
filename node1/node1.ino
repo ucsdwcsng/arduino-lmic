@@ -56,7 +56,7 @@
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 // debug level: LMIC_DEBUG_LEVEL
 
-#define NODE_IDX 121
+#define NODE_IDX 126
 
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 100
@@ -65,7 +65,7 @@
 #define FREQ_CAD_INDEX 18
 #define FREQ_EXPT_INDEX 20
 #define FREQ_CNFG_INDEX 22
-#define ADAFRUIT_FEATHER_TYPE 0
+#define ADAFRUIT_FEATHER_TYPE 2
 
 #define PRINT_ONLY_PACKET 1
 #define TRANSMIT_SAME_PACKET 1

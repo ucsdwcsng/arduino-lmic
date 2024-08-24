@@ -68,7 +68,7 @@
 #define ADAFRUIT_FEATHER_TYPE 0
 
 #define PRINT_ONLY_PACKET 1
-#define TRANSMIT_SAME_PACKET 1
+#define TRANSMIT_SAME_PACKET 0 // enable to tranmit same packet bytes
 #define BACKHAUL_PRINT_DELAY 100
 
 // Pin mapping

@@ -68,6 +68,9 @@
 #define PRINT_TO_SERIAL 1 // 1 prints on serial, else in memory
 #define ADAFRUIT_FEATHER_TYPE 2
 // check LMIC_DEBUG_LEVEL
+#define MODEM_DETECTED_OUT_PIN 25
+#define DETECTED_PIN_RXDONE HIGH
+#define DETECTED_PIN_RX LOW
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER_TYPE == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
@@ -143,7 +146,7 @@ void rx(osjobcb_t func)
 static void backhaul_data(osjob_t *job)
 {
   // char buffer[10];
-  // sprintf(buffer, "%d", millis()/1000);  
+  // sprintf(buffer, "%d", millis()/1000);
   // Serial.print(buffer);
   // Serial.print(", ");
   // Asynchronous backhaul job
@@ -204,6 +207,23 @@ static void rx_func(osjob_t *job)
   rx(rxdone_func);
 }
 
+static void modemstatus_detect_func(void)
+{
+  // #define copied from radio.c
+#define LORARegModemStat                           0x18
+  u1_t modem_status, detected;
+  hal_spi_read(LORARegModemStat & 0x7f, &modem_status, 1);
+  detected = modem_status & 0x01;
+  if (detected) {
+    digitalWrite(MODEM_DETECTED_OUT_PIN, DETECTED_PIN_RX);
+    digitalWrite(LED_BUILTIN, DETECTED_PIN_RX);
+  }
+  else {
+    digitalWrite(MODEM_DETECTED_OUT_PIN, DETECTED_PIN_RXDONE);
+    digitalWrite(LED_BUILTIN, DETECTED_PIN_RXDONE);
+  }
+}
+
 void wait_for_input_and_print()
 {
   unsigned long startTime;
@@ -246,6 +266,8 @@ void setup()
 {
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(MODEM_DETECTED_OUT_PIN, OUTPUT); // Maiyun: Added for FSMA triggering
+  digitalWrite(MODEM_DETECTED_OUT_PIN, LOW);
   // blink to show reset
   for (int i = 0; i < 10; i++)
   {
@@ -302,4 +324,5 @@ void loop()
 {
   // execute scheduled jobs and events
   os_runloop_once();
+  modemstatus_detect_func(); // Maiyun: Added for FSMA triggering
 }

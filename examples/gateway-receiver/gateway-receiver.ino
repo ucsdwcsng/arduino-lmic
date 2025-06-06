@@ -69,8 +69,9 @@
 #define ADAFRUIT_FEATHER_TYPE 2
 // check LMIC_DEBUG_LEVEL
 #define MODEM_DETECTED_OUT_PIN 25
-#define DETECTED_PIN_RXDONE HIGH
-#define DETECTED_PIN_RX LOW
+// FREE=HIGH is FSMA; FREE=LOW is BSMA
+#define DETECTED_PIN_FREE HIGH
+#define DETECTED_PIN_BUSY LOW
 
 // Pin mapping
 #if (ADAFRUIT_FEATHER_TYPE == 2)  // Pin mapping for Adafruit Feather RP2040 LoRa, etc.
@@ -214,14 +215,10 @@ static void modemstatus_detect_func(void)
   u1_t modem_status, detected;
   hal_spi_read(LORARegModemStat & 0x7f, &modem_status, 1);
   detected = modem_status & 0x01;
-  if (detected) {
-    digitalWrite(MODEM_DETECTED_OUT_PIN, DETECTED_PIN_RX);
-    digitalWrite(LED_BUILTIN, DETECTED_PIN_RX);
-  }
-  else {
-    digitalWrite(MODEM_DETECTED_OUT_PIN, DETECTED_PIN_RXDONE);
-    digitalWrite(LED_BUILTIN, DETECTED_PIN_RXDONE);
-  }
+  if (detected)
+    digitalWrite(MODEM_DETECTED_OUT_PIN, DETECTED_PIN_BUSY);
+  else
+    digitalWrite(MODEM_DETECTED_OUT_PIN, DETECTED_PIN_FREE);
 }
 
 void wait_for_input_and_print()

@@ -981,7 +981,7 @@ uint8_t lmaccadlora (){
 		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 		            #if LMIC_DEBUG_LEVEL > 0
-				        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+				        LMIC_DEBUG_PRINTF("lmaccadlora()-c1 | RSSI: %d\n",rssi.max_rssi );
 					#endif
 
 			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1041,7 +1041,7 @@ uint8_t lmaccadlora (){
 		        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 		            #if LMIC_DEBUG_LEVEL > 0
-				        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+				        LMIC_DEBUG_PRINTF("lmaccadlora()-c2 | RSSI: %d\n",rssi.max_rssi );
 					#endif
 
 			    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1132,7 +1132,7 @@ uint8_t cadlora (){
 	        LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
 	            #if LMIC_DEBUG_LEVEL > 0
-			        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+			        LMIC_DEBUG_PRINTF("cadlora() | RSSI: %d\n",rssi.max_rssi );
 				#endif
 
 		    if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1159,7 +1159,7 @@ uint8_t cadlora (){
 
 		        if (flags & IRQ_LORA_CDDETD_MASK) {
 		        	#if LMIC_DEBUG_LEVEL > 0
-		        		LMIC_DEBUG_PRINTF("CAD SENSED!\n");
+		        		LMIC_DEBUG_PRINTF("cadlora() | CAD SENSED!\n");
 		        	#endif
 		        	LMIC.sysname_cad_detect_counter = LMIC.sysname_cad_detect_counter + 1;
 		            clear_bit=0;
@@ -1203,7 +1203,7 @@ u1_t cadlora_customSensing (void) {
     LMIC.sysname_lbt_counter = LMIC.sysname_lbt_counter + 1;
 
     #if LMIC_DEBUG_LEVEL > 0
-        LMIC_DEBUG_PRINTF("RSSI: %d\n",rssi.max_rssi );
+        LMIC_DEBUG_PRINTF("RSSI: %d, lbt_max_dB: %d\n",rssi.max_rssi, LMIC.lbt_dbmax);
     #endif
 
     if (rssi.max_rssi >= LMIC.lbt_dbmax) {
@@ -1213,7 +1213,7 @@ u1_t cadlora_customSensing (void) {
     LMIC.sysname_lbt_rssi_max = rssi.max_rssi;
     LMIC.sysname_lbt_rssi_mean = rssi.mean_rssi;
 
-    if ((detected_max_energy == 0) || (LMIC.sysname_is_FSMA_node == 1) || (LMIC.sysname_enable_cad_analysis == 1)) {
+    if ((detected_max_energy == 0) || (LMIC.sysname_is_FSMA_node == 1) || (LMIC.sysname_enable_cad_analysis == 1) || (LMIC.sysname_is_CSMA_node == 1)) {
         LMIC.rps = LMIC.sysname_cad_rps;
         LMIC.freq = LMIC.sysname_cad_freq_vec[1];
 
@@ -1253,7 +1253,7 @@ u1_t cadlora_customSensing (void) {
         }
     }
 
-    // for node, false positive check / inband cad
+    // for FSMA node - do false positive check / inband cad
     if (LMIC.sysname_is_FSMA_node == 1 && detected_CAD == 1 && LMIC.sysname_enable_inband_cad > 0) {
 
         // wait for few ms
@@ -1281,10 +1281,14 @@ u1_t cadlora_customSensing (void) {
         check_CAD = doCAD();
     }
 
-    if (LMIC.sysname_is_FSMA_node == 0) {
-        isChannelFree = (detected_max_energy == 0) && (detected_CAD == 0);
-    } else {
+    if (LMIC.sysname_is_FSMA_node == 1) {// for csma node
         isChannelFree = (check_CAD == 1) || (detected_CAD == 0);
+    }
+    else if (LMIC.sysname_is_CSMA_node == 1) { // for csma node
+        isChannelFree = (detected_CAD == 0); // no CAD
+    } 
+    else { // for FSMA gateway sensing and others
+        isChannelFree = (detected_max_energy == 0) && (detected_CAD == 0); //No energy detected and no CAD
     }
     // channel is free - (max energy is not detected) and (CAD is not detected) or (channel doesn't have min energy)
     #if LMIC_DEBUG_LEVEL > 0
@@ -1373,7 +1377,7 @@ uint8_t fsmacadlora(){
         #endif
 
         // if transmit condition not met and it is a FSMA node - apply backoff
-        if(!tx_condition && (LMIC.sysname_is_FSMA_node == 1)){
+        if(!tx_condition && (LMIC.sysname_is_FSMA_node == 1 || LMIC.sysname_is_CSMA_node == 1)){
             if (LMIC.sysname_enable_exponential_backoff) {
                 exponent_count =  exponent_count + 1;
             }
@@ -1550,10 +1554,36 @@ static void txlora () {
             LMIC.rps = LMIC.sysname_cad_rps;
             LMIC.freq = LMIC.sysname_cad_freq_vec[1];
             fsmacadlora();
+            #if LMIC_DEBUG_LEVEL > 0
+                if (LMIC.sysname_is_FSMA_node  == 1){
+                    LMIC_DEBUG_PRINTF("Running FSMA for node\n");
+                } 
+                else {
+                    LMIC_DEBUG_PRINTF("Running FSMA for gateway (not node case)\n");
+                }
+                
+            #endif
+
 		} else {
             LMIC.rps = LMIC.sysname_tx_rps;
-            LMIC.freq = LMIC.sysname_cad_freq_vec[0];
-    		cadlora();
+            LMIC.freq = LMIC.sysname_cad_freq_vec[1];
+            // cadlora has issue, sometimes always being in loop
+    		// cadlora();
+            // chaging code fsma gateway sensing old logic
+            LMIC.sysname_is_FSMA_node = 0;
+            LMIC.sysname_is_CSMA_node = 1;
+            #if LMIC_DEBUG_LEVEL > 0
+                if (LMIC.sysname_is_FSMA_node  == 1){
+                    LMIC_DEBUG_PRINTF("Running FSMA for node\n");
+                } 
+                else if (LMIC.sysname_is_CSMA_node == 1) {
+                    LMIC_DEBUG_PRINTF("Running CSMA for node\n");
+                }
+            #endif
+            fsmacadlora();
+            #if LMIC_DEBUG_LEVEL > 0
+                LMIC_DEBUG_PRINTF("using fsmacadlora() based sensing instead of cadlora()");
+            #endif
     	}
         LMIC.freq = LMIC.sysname_cad_freq_vec[0];
 	} else{

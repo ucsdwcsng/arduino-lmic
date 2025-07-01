@@ -56,7 +56,7 @@
 // https://docs.google.com/spreadsheets/d/1voGAtQAjC1qBmaVuP1ApNKs1ekgUjavHuVQIXyYSvNc
 // debug level: LMIC_DEBUG_LEVEL
 
-#define NODE_IDX 127
+#define NODE_IDX 102
 
 #define RSSI_RESET_VAL 128
 #define SCHEDULE_LEN 100
@@ -530,6 +530,13 @@ static void prepare_multi_tx()
 
   // FSMA params
   LMIC.sysname_enable_FSMA = reg_array[49];
+  if (LMIC.sysname_enable_FSMA){
+    LMIC.sysname_is_FSMA_node = 1;
+  }
+  else{
+    LMIC.sysname_is_FSMA_node = 0;
+    LMIC.sysname_is_CSMA_node = 1;
+  }
   LMIC.sysname_lbt_dbmin = reg_array[50]; // > -188 (-118 and below are decting as false positive for cad)
   LMIC.sysname_enable_exponential_backoff = reg_array[51];
 
@@ -607,7 +614,7 @@ static void store_multitx_results()
 
   // Resetting FSMA params
   LMIC.sysname_enable_FSMA = 0;
-  LMIC.sysname_lbt_dbmin = -116; // > -188 (-118 and below are decting as false positive for cad)
+  LMIC.sysname_lbt_dbmin = -118; // > -188 (-118 and below are decting as false positive for cad)
   LMIC.sysname_enable_exponential_backoff = 0;
 }
 
@@ -1089,7 +1096,7 @@ void setup()
   
   // FSMA
   reg_array[49] = 0; // Diasble FSMA  
-  reg_array[50] = -150; // Listen before talk min RSSI s1_T
+  reg_array[50] = -128; // Listen before talk min RSSI s1_T
   reg_array[51] = 0; // Disable exponential backoff
   reg_array[55] = 1; // enable inband CAD
   reg_array[56] = 2; // RPS of inband CAD
